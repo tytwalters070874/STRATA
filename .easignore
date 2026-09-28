@@ -1,0 +1,6 @@
+# Large geodata files - already imported to Supabase
+scripts/import-geodata/SGMC/
+scripts/import-geodata/USGS_SGMC_Shapefiles.zip
+
+# Git history
+.git/

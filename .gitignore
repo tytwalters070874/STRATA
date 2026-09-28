@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Geodata: large source files, already imported to Supabase
+scripts/import-geodata/SGMC/
+scripts/import-geodata/*.zip
+# Contains the database password
+scripts/import-geodata/import.bat
+
+# Supabase CLI local state (also covered by services/supabase/.gitignore)
+services/supabase/.temp/
+services/supabase/.branches/
+
+# Claude Code personal settings
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

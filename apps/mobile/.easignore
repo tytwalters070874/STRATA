@@ -1,0 +1,13 @@
+# Geodata — already imported to Supabase
+../../scripts/
+
+# Services — backend only, not needed for mobile build  
+../../services/
+
+# Git
+../../.git/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
