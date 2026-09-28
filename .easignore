@@ -1,6 +1,41 @@
-# Large geodata files - already imported to Supabase
-scripts/import-geodata/SGMC/
-scripts/import-geodata/USGS_SGMC_Shapefiles.zip
+# EAS uses this file instead of .gitignore, so it repeats every .gitignore
+# rule plus build-only exclusions.
 
-# Git history
+# ── From .gitignore ────────────────────────────────────────────────────────
 .git/
+node_modules/
+.env
+.env.*
+scripts/import-geodata/SGMC/
+scripts/import-geodata/*.zip
+scripts/import-geodata/import.bat
+services/supabase/.temp/
+services/supabase/.branches/
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+*.log
+
+# ── From apps/mobile/.gitignore ────────────────────────────────────────────
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/expo-env.d.ts
+apps/mobile/.kotlin/
+apps/mobile/ios/
+apps/mobile/android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+.metro-health-check*
+*.tsbuildinfo
+
+# ── Not needed for the mobile build ────────────────────────────────────────
+scripts/
+services/
+docs/
+.github/
