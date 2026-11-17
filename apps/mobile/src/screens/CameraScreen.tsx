@@ -41,7 +41,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
   const cameraRef = useRef<CameraView>(null);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const { permission: locationPermission, position } = useCurrentPosition('capture');
+  const { permission: locationPermission, position, positionIsFresh, gpsError } = useCurrentPosition('capture');
   const { session, isLoading: authLoading, error: authError, retry: retryAuth } = useAuth();
 
   const [cameraReady, setCameraReady] = useState(false);
@@ -80,7 +80,9 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
     if (authLoading) return 'Connecting…';
     if (!session) return authError ? 'Offline — tap to retry sign-in' : 'Connecting…';
     if (locationPermission === 'denied') return 'Location is needed to identify rocks';
-    if (!position) return 'Waiting for GPS…';
+    if (gpsError) return 'GPS unavailable. Check location services.';
+    // A cached fix from an earlier session is not used to tag the photo.
+    if (!position || !positionIsFresh) return 'Waiting for GPS…';
     if (!cameraReady) return 'Starting camera…';
     return null;
   })();

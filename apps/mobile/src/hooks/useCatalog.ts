@@ -61,10 +61,12 @@ async function fetchCatalog(): Promise<CatalogEntry[]> {
   if (error) throw error;
 
   const photoPaths = data.map((row) => row.photo_path).filter((p): p is string => p != null);
-  const thumbUrls = await signPaths(photoPaths.map(thumbnailPath));
-  // Photos saved before thumbnails existed fall back to the full image.
-  const withoutThumb = photoPaths.filter((path) => !thumbUrls.has(thumbnailPath(path)));
-  const fullUrls = await signPaths(withoutThumb);
+  // Signed in one round trip. Photos saved before thumbnails existed have no
+  // thumbnail URL and fall back to the full image's URL.
+  const [thumbUrls, fullUrls] = await Promise.all([
+    signPaths(photoPaths.map(thumbnailPath)),
+    signPaths(photoPaths),
+  ]);
 
   return data.map((row) => {
     if (!row.photo_path) return { ...row, thumbnail_url: null, thumbnail_cache_key: null };

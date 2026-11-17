@@ -1,7 +1,7 @@
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import ConfidenceMeter, { confidenceLevel } from '../components/ConfidenceMeter';
+import ConfidenceMeter from '../components/ConfidenceMeter';
 import { useSaveToCatalog } from '../hooks/useSaveToCatalog';
 import type { RootStackScreenProps } from '../navigation/types';
 
@@ -11,7 +11,8 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
   const { isSaved, isChecking, save, isSaving, error } = useSaveToCatalog(result.identification_id);
 
   const isNotRock = result.rock_type.toLowerCase() === 'not a rock';
-  const isLowConfidence = confidenceLevel(result.confidence) === 'low';
+  // The server already classified the confidence; use its tier, not a copy of the thresholds.
+  const isLowConfidence = result.confidence_tier === 'low';
   const mapped = result.mapped_formation;
   const guessMatchesMap =
     mapped != null &&

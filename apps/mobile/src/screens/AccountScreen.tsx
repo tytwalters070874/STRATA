@@ -109,6 +109,9 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
         type: step.mode === 'link' ? 'email_change' : 'email',
       });
       if (verifyError) throw verifyError;
+      // The session may now belong to an account with a different catalog. Drop
+      // the cached data (the guest's) so it isn't shown or kept on disk.
+      queryClient.clear();
       setStep(null);
       Alert.alert(
         step.mode === 'link' ? 'Catalog saved' : 'Signed in',

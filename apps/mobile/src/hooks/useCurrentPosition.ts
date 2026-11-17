@@ -13,7 +13,7 @@ export type { PermissionState } from '../lib/location';
 export function useCurrentPosition(mode: LocationMode) {
   const context = useContext(LocationContext);
   if (!context) throw new Error('useCurrentPosition must be used inside <LocationProvider>');
-  const { permission, position, setDemand } = context;
+  const { permission, position, positionIsFresh, gpsError, setDemand } = context;
 
   const id = useId();
   const isFocused = useIsFocused();
@@ -24,5 +24,5 @@ export function useCurrentPosition(mode: LocationMode) {
     return () => setDemand(id, null);
   }, [id, isFocused, mode, setDemand]);
 
-  return { permission, position };
+  return { permission, position, positionIsFresh, gpsError };
 }

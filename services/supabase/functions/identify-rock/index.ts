@@ -19,8 +19,9 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 type ImageMediaType = (typeof ALLOWED_MEDIA_TYPES)[number];
 
-// Keep the primary call short enough that the fallback still fits inside the
-// Edge Function wall-clock limit.
+// The two calls run one after the other, and the SDKs are set to no retries
+// (a retry would repeat the whole timeout). Worst case is 60 s + 45 s = 105 s,
+// which stays inside the Edge Function wall-clock limit.
 const ANTHROPIC_TIMEOUT_MS = 60_000;
 const OPENAI_TIMEOUT_MS = 45_000;
 
@@ -148,7 +149,8 @@ function parseModelResult(text: string): ModelResult {
     formation_guess: data.formation_guess?.trim() || null,
     confidence: Math.min(1, Math.max(0, data.confidence)),
     reasoning: data.reasoning.trim(),
-    minerals_visible: data.minerals_visible,
+    // Duplicates would make the app render two chips with the same React key.
+    minerals_visible: [...new Set<string>(data.minerals_visible.map((m: string) => m.trim()))],
   };
 }
 
@@ -278,7 +280,7 @@ async function identifyWithAnthropic(
   const client = new Anthropic({
     apiKey: requireEnv("ANTHROPIC_API_KEY"),
     timeout: ANTHROPIC_TIMEOUT_MS,
-    maxRetries: 1,
+    maxRetries: 0,
   });
 
   const response = await client.messages.create({
@@ -330,7 +332,7 @@ async function identifyWithOpenAI(
   const client = new OpenAI({
     apiKey: requireEnv("OPENAI_API_KEY"),
     timeout: OPENAI_TIMEOUT_MS,
-    maxRetries: 1,
+    maxRetries: 0,
   });
 
   const response = await client.chat.completions.create({

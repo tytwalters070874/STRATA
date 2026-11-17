@@ -45,7 +45,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   // padding goes on right after onMapReady, so a zoom started then was lost.
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  const { permission, position } = useCurrentPosition('map');
+  const { permission, position, gpsError } = useCurrentPosition('map');
   const lat = position?.coords.latitude;
   const lng = position?.coords.longitude;
   const { formation, isLoading, error } = useFormation(lat, lng);
@@ -124,6 +124,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         <View style={styles.handle} />
         <SheetContent
           permission={permission}
+          gpsError={gpsError}
           hasFix={position != null}
           accuracyM={position?.coords.accuracy ?? null}
           formation={formation}
@@ -137,6 +138,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
 
 interface SheetContentProps {
   permission: PermissionState;
+  gpsError: string | null;
   hasFix: boolean;
   accuracyM: number | null;
   formation: Formation | null;
@@ -144,7 +146,7 @@ interface SheetContentProps {
   error: Error | null;
 }
 
-function SheetContent({ permission, hasFix, accuracyM, formation, isLoading, error }: SheetContentProps) {
+function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, isLoading, error }: SheetContentProps) {
   if (permission === 'denied') {
     return (
       <>
@@ -155,6 +157,15 @@ function SheetContent({ permission, hasFix, accuracyM, formation, isLoading, err
         <Pressable onPress={() => Linking.openSettings()} style={styles.button}>
           <Text style={styles.buttonText}>Open settings</Text>
         </Pressable>
+      </>
+    );
+  }
+
+  if (!hasFix && gpsError) {
+    return (
+      <>
+        <Text style={styles.title}>GPS unavailable</Text>
+        <Text style={styles.body}>Turn on location services, then reopen STRATA.</Text>
       </>
     );
   }

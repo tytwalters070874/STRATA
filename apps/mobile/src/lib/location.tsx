@@ -24,6 +24,10 @@ const WATCH_OPTIONS: Record<LocationMode, Location.LocationOptions> = {
 interface LocationContextValue {
   permission: PermissionState;
   position: Location.LocationObject | null;
+  /** True only once a live GPS update has arrived this session, not for a cached last-known fix. */
+  positionIsFresh: boolean;
+  /** Set when GPS could not start (e.g. location services off). */
+  gpsError: string | null;
   /** Registers (or with null, removes) one screen's need for location. */
   setDemand: (id: string, mode: LocationMode | null) => void;
 }
@@ -38,6 +42,8 @@ export const LocationContext = createContext<LocationContextValue | null>(null);
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<PermissionState>('pending');
   const [position, setPosition] = useState<Location.LocationObject | null>(null);
+  const [positionIsFresh, setPositionIsFresh] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [demands, setDemands] = useState<Record<string, LocationMode>>({});
   // Whether Google's "Location Accuracy" prompt has been offered this launch.
   // Android shows it when GPS starts and that setting is off. The prompt
@@ -87,9 +93,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const needsPermission = modes.length > 0 && permission === 'pending';
   useEffect(() => {
     if (!needsPermission) return;
-    void Location.requestForegroundPermissionsAsync().then(({ status }) =>
-      setPermission(status === 'granted' ? 'granted' : 'denied'),
-    );
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => setPermission(status === 'granted' ? 'granted' : 'denied'))
+      .catch(() => setPermission('denied'));
   }, [needsPermission]);
 
   // After "Open settings", pick up a permission granted there on return.
@@ -113,27 +119,41 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      // Show something immediately while waiting for a fresh fix.
-      const lastKnown = await Location.getLastKnownPositionAsync();
-      if (!cancelled && lastKnown) setPosition((current) => current ?? lastKnown);
+      try {
+        // Show something immediately while waiting for a fresh fix.
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (!cancelled && lastKnown) setPosition((current) => current ?? lastKnown);
 
-      const mayShowUserSettingsDialog = !accuracyPromptOfferedRef.current;
-      accuracyPromptOfferedRef.current = true;
-      const sub = await Location.watchPositionAsync(
-        { ...WATCH_OPTIONS[wanted], mayShowUserSettingsDialog },
-        (next) => setPosition(next),
-      );
-      if (cancelled) sub.remove();
-      else subscription = sub;
+        const mayShowUserSettingsDialog = !accuracyPromptOfferedRef.current;
+        accuracyPromptOfferedRef.current = true;
+        const sub = await Location.watchPositionAsync(
+          { ...WATCH_OPTIONS[wanted], mayShowUserSettingsDialog },
+          (next) => {
+            setPosition(next);
+            setPositionIsFresh(true);
+          },
+        );
+        if (cancelled) sub.remove();
+        else subscription = sub;
+      } catch (e) {
+        if (!cancelled) setGpsError(e instanceof Error ? e.message : 'Could not start GPS');
+      }
     })();
 
     return () => {
       cancelled = true;
       subscription?.remove();
+      // Until the next live update arrives, the position is not fresh: it may be
+      // a cached fix, and capture must not be tagged with it. Reset on restart.
+      setPositionIsFresh(false);
+      setGpsError(null);
     };
   }, [permission, wanted]);
 
-  const value = useMemo(() => ({ permission, position, setDemand }), [permission, position, setDemand]);
+  const value = useMemo(
+    () => ({ permission, position, positionIsFresh, gpsError, setDemand }),
+    [permission, position, positionIsFresh, gpsError, setDemand],
+  );
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
