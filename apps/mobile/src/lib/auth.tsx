@@ -44,17 +44,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Auth methods are deferred out of this callback because calling them
+    // inside it can deadlock supabase-js.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
-      // A stored session whose refresh token is rejected ends in SIGNED_OUT;
-      // start a fresh anonymous session. Deferred because calling auth
-      // methods inside this callback can deadlock supabase-js.
-      if (event === 'SIGNED_OUT') setTimeout(() => void ensureSession(), 0);
+      if (event === 'INITIAL_SESSION') {
+        // Fired once on subscribe with the stored session, if any.
+        if (nextSession) setIsLoading(false);
+        else setTimeout(() => void ensureSession(), 0);
+      } else if (event === 'SIGNED_OUT') {
+        // Sign-out, or a stored refresh token that was rejected: start a
+        // fresh anonymous session.
+        setTimeout(() => void ensureSession(), 0);
+      }
     });
 
-    void ensureSession();
     return () => subscription.unsubscribe();
   }, [ensureSession]);
 

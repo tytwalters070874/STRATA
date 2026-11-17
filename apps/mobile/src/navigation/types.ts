@@ -14,6 +14,7 @@ export type RootStackParamList = {
     lng: number;
   };
   Catalog: undefined;
+  Account: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
@@ -22,7 +23,6 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeSta
 >;
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}

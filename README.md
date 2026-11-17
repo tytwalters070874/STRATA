@@ -24,6 +24,13 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 GOOGLE_MAPS_API_KEY=...
 ```
 
+Checks (also run in CI on every push and pull request):
+
+```powershell
+npm run typecheck
+npm run lint
+```
+
 ## Backend
 
 ```powershell
@@ -33,6 +40,18 @@ supabase secrets set ANTHROPIC_API_KEY=... OPENAI_API_KEY=...
 supabase functions deploy identify-rock
 ```
 
-Optional secret: `IDENTIFY_DAILY_LIMIT` (identifications per user per 24 h, default 20).
+Optional secrets:
 
-Anonymous sign-ins must be enabled in the Supabase dashboard (Authentication → Sign In / Providers).
+- `IDENTIFY_DAILY_LIMIT`: identifications per user per 24 h (default 20).
+- `OPENAI_FALLBACK_MODEL`: fallback model when the active `prompt_versions` row has no `fallback_model` (default `gpt-4o`).
+
+Both models are set on the active `prompt_versions` row (`model` for Anthropic, `fallback_model` for OpenAI). To change either, insert a new row with `is_active = true` and deactivate the old one. No redeploy is needed.
+
+Deploy the function together with the latest migration. The function reads photos from the `rock-photos` bucket and writes `identifications.photo_path`, which the migration renames from `photo_url`.
+
+### Auth
+
+Every user starts as an anonymous guest. From **Catalog → Account**, a guest can attach an email to keep their catalog, or sign in to an existing account. Both flows confirm with a 6-digit code, so no deep links are needed. In the Supabase dashboard:
+
+- Enable anonymous sign-ins and email sign-ins (Authentication → Sign In / Providers).
+- In Authentication → Email Templates, include `{{ .Token }}` in the **Change Email Address** and **Magic Link** templates so the email contains the code.

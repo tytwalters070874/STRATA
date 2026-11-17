@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import type { IdentificationResult } from '../types/identification';
@@ -35,13 +36,6 @@ export interface IdentifyOutput {
   photoPath: string;
 }
 
-function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
 /**
  * Resizes and re-encodes the photo. Re-encoding from pixels writes a fresh
  * JPEG without the camera's EXIF block, which drops GPS coordinates, device
@@ -54,9 +48,15 @@ async function preparePhoto(photo: CapturedPhoto) {
     context.resize(photo.width >= photo.height ? { width: MAX_EDGE_PX } : { height: MAX_EDGE_PX });
   }
   const image = await context.renderAsync();
-  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY, base64: true });
-  if (!saved.base64) throw new Error('Image processing did not return data');
-  return { uri: saved.uri, base64: saved.base64 };
+  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });
+  const bytes = await new File(saved.uri).arrayBuffer();
+  return { uri: saved.uri, bytes };
+}
+
+/** Best-effort cleanup; a leftover photo is not worth surfacing an error for. */
+async function removeUploadedPhoto(photoPath: string) {
+  const { error } = await supabase.storage.from(ROCK_PHOTOS_BUCKET).remove([photoPath]);
+  if (error) console.warn('Could not remove uploaded photo', error);
 }
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
@@ -98,29 +98,28 @@ export async function identifyRock({
   const photoPath = `${userId}/${Date.now()}.jpg`;
   const { error: uploadError } = await supabase.storage
     .from(ROCK_PHOTOS_BUCKET)
-    .upload(photoPath, base64ToBytes(prepared.base64), { contentType: 'image/jpeg' });
+    .upload(photoPath, prepared.bytes, { contentType: 'image/jpeg' });
   if (uploadError) throw new Error(`Photo upload failed: ${uploadError.message}`);
 
   onStage?.('identifying');
+  // The function reads the photo from Storage, so it is uploaded only once.
   const { data, error } = await supabase.functions.invoke<IdentificationResult>('identify-rock', {
     body: {
-      image_base64: prepared.base64,
-      media_type: 'image/jpeg',
       lat,
       lng,
       accuracy_m: accuracyM ?? undefined,
       photo_path: photoPath,
     },
   });
-  if (error) {
-    const { message, code } = await readFunctionError(error);
-    // A limited request is discarded server-side, so drop its photo too.
-    if (code === 'daily_limit') {
-      await supabase.storage.from(ROCK_PHOTOS_BUCKET).remove([photoPath]);
-    }
+  if (error || !data) {
+    // A result we never received can't be saved to the catalog, so its photo
+    // is useless. The function also removes photos for failed and limited
+    // attempts; this covers network failures it never sees.
+    await removeUploadedPhoto(photoPath);
+    if (!error) throw new Error('Identification returned no result');
+    const { message } = await readFunctionError(error);
     throw new Error(message);
   }
-  if (!data) throw new Error('Identification returned no result');
 
   return { result: data, photoUri: prepared.uri, photoPath };
 }
