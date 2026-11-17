@@ -6,7 +6,7 @@ Geologic field companion for Montana and Wyoming. Shows the mapped formation und
 
 - `apps/mobile/` — Expo (SDK 56) React Native app
 - `services/supabase/` — Supabase project: migrations and Edge Functions
-- `scripts/import-geodata/` — one-off USGS SGMC import (source data not committed)
+- `scripts/import-geodata/` — one-off USGS SGMC import (source data not committed). To rerun it, copy `import.example.bat` to `import.bat` (git-ignored) and replace `YOUR_PASSWORD` with the database password. Requires GDAL's `ogr2ogr`.
 
 ## Mobile app
 
