@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -30,8 +32,28 @@ type Step = { mode: Mode; stage: 'email' } | { mode: Mode; stage: 'code'; email:
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+async function deleteAccount() {
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+  if (error) {
+    let message = 'Could not delete your account. Please try again.';
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body: { error?: string } = await error.context.json();
+        if (typeof body.error === 'string') message = body.error;
+      } catch {
+        // Keep the generic message.
+      }
+    }
+    throw new Error(message);
+  }
+  // The server has already deleted the user, so a global sign-out would fail.
+  // Clear the local session; auth.tsx then starts a fresh guest session.
+  await supabase.auth.signOut({ scope: 'local' });
+}
+
 export default function AccountScreen({ navigation }: RootStackScreenProps<'Account'>) {
   const headerHeight = useHeaderHeight();
+  const queryClient = useQueryClient();
   const { session } = useAuth();
   const user = session?.user ?? null;
   const isGuest = user?.is_anonymous ?? true;
@@ -111,6 +133,30 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
             if (signOutError) throw signOutError;
             navigation.popTo('Map');
           }),
+        },
+      ],
+    );
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your catalog, rock photos, identification history' +
+        (isGuest ? '' : ' and the email sign-in') +
+        '. It cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            void run(async () => {
+              await deleteAccount();
+              // Drop cached catalog data that belonged to the deleted user.
+              queryClient.clear();
+              navigation.popTo('Map');
+              Alert.alert('Account deleted', 'Your account and everything in it have been deleted.');
+            }),
         },
       ],
     );
@@ -219,6 +265,27 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
         )}
 
         {step === null && error && <Text style={styles.error}>{error}</Text>}
+
+        {step === null && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Delete account</Text>
+            <Text style={styles.body}>
+              Permanently delete your account, catalog, photos and identification history.
+            </Text>
+            <Pressable
+              style={[styles.secondaryButton, busy && styles.disabled]}
+              onPress={confirmDelete}
+              disabled={busy}
+              accessibilityRole="button"
+            >
+              {busy ? (
+                <ActivityIndicator color="#d4453a" />
+              ) : (
+                <Text style={styles.destructiveText}>Delete account</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

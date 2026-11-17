@@ -38,6 +38,7 @@ cd services
 supabase db push
 supabase secrets set ANTHROPIC_API_KEY=... OPENAI_API_KEY=...
 supabase functions deploy identify-rock
+supabase functions deploy delete-account
 ```
 
 Optional secrets:
@@ -55,3 +56,5 @@ Every user starts as an anonymous guest. From **Catalog → Account**, a guest c
 
 - Enable anonymous sign-ins and email sign-ins (Authentication → Sign In / Providers).
 - In Authentication → Email Templates, include `{{ .Token }}` in the **Change Email Address** and **Magic Link** templates so the email contains the code.
+
+**Account → Delete account** calls the `delete-account` Edge Function. It removes the user's photos from Storage, then deletes the auth user, which cascades to every table. Google Play also requires a web link where people can request deletion without the app. That link isn't built yet.

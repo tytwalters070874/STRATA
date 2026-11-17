@@ -24,11 +24,14 @@ jobs:
       - run: npm run lint
 
   edge-functions:
-    name: Edge Functions (deno check)
+    name: Edge Function ${{ matrix.function }} (deno check)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        function: [identify-rock, delete-account]
     defaults:
       run:
-        working-directory: services/supabase/functions/identify-rock
+        working-directory: services/supabase/functions/${{ matrix.function }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
