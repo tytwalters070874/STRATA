@@ -39,7 +39,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<PermissionState>('pending');
   const [position, setPosition] = useState<Location.LocationObject | null>(null);
   const [demands, setDemands] = useState<Record<string, LocationMode>>({});
-  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
+  // The app is on screen when this first renders. AppState.currentState can
+  // still read 'background' here: Android reports the state from before the
+  // activity resumed, and the correction can arrive before the listener
+  // below subscribes. Later changes come through the listener.
+  const [appActive, setAppActive] = useState(true);
 
   const setDemand = useCallback((id: string, mode: LocationMode | null) => {
     setDemands((current) => {
@@ -67,17 +71,20 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         : null;
 
   // Ask for permission the first time any screen needs location.
-  const needsPermission = wanted !== null && permission === 'pending';
+  //
+  // Deliberately independent of appActive, and the answer is never
+  // discarded: the permission dialog is a separate system screen, so opening
+  // it moves STRATA to the background. When this effect depended on
+  // appActive, that cleanup cancelled the request, the dialog closed, the app
+  // became active again and asked again, in a loop that never stored the
+  // answer. A permission result is true for the whole app, so it is always
+  // kept, even if the screens that asked have since gone.
+  const needsPermission = modes.length > 0 && permission === 'pending';
   useEffect(() => {
     if (!needsPermission) return;
-    let cancelled = false;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (!cancelled) setPermission(status === 'granted' ? 'granted' : 'denied');
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void Location.requestForegroundPermissionsAsync().then(({ status }) =>
+      setPermission(status === 'granted' ? 'granted' : 'denied'),
+    );
   }, [needsPermission]);
 
   // After "Open settings", pick up a permission granted there on return.
