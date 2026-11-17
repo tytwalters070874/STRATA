@@ -25,14 +25,25 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
         <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
 
         <View style={styles.card}>
-          <Text style={styles.rockType}>{result.rock_type}</Text>
-          <ConfidenceMeter confidence={result.confidence} />
-          {(isLowConfidence || isNotRock) && (
-            <Text style={styles.hint}>
-              {isNotRock
-                ? "This photo doesn't appear to show a rock."
-                : 'Try a closer photo of a fresh, broken surface in even light, with something for scale.'}
-            </Text>
+          {isNotRock ? (
+            // A confidence score means nothing when there is no rock to score,
+            // so this state gets its own title and advice instead of "0%".
+            <>
+              <Text style={styles.rockType}>No rock found</Text>
+              <Text style={styles.hint}>
+                Fill the guide box with the rock, close up, in even daylight.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.rockType, styles.capitalize]}>{result.rock_type}</Text>
+              <ConfidenceMeter confidence={result.confidence} />
+              {isLowConfidence && (
+                <Text style={styles.hint}>
+                  Try a closer photo of a fresh, broken surface in even light, with something for scale.
+                </Text>
+              )}
+            </>
           )}
         </View>
 
@@ -83,10 +94,17 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
           <Text style={styles.meta}>This result wasn't recorded, so it can't be saved. Try again.</Text>
         )}
         <View style={styles.footerButtons}>
-          <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.secondaryButtonText}>Retake</Text>
-          </Pressable>
-          {isSaved ? (
+          {isNotRock ? (
+            // Nothing to save, so retaking is the one useful action.
+            <Pressable style={styles.primaryButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.primaryButtonText}>Retake photo</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.secondaryButtonText}>Retake</Text>
+            </Pressable>
+          )}
+          {isNotRock ? null : isSaved ? (
             <Pressable style={styles.primaryButton} onPress={() => navigation.popTo('Map')}>
               <Text style={styles.primaryButtonText}>Saved ✓  Back to map</Text>
             </Pressable>
@@ -144,6 +162,8 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: '#1d1b16',
+  },
+  capitalize: {
     textTransform: 'capitalize',
   },
   hint: {

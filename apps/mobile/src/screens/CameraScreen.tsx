@@ -139,35 +139,12 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
 
       {previewUri && <Image source={{ uri: previewUri }} style={StyleSheet.absoluteFill} />}
 
-      {/* Framing guide */}
-      {!previewUri && (
+      {/* Framing guide, hidden under the tips so its outline doesn't show through */}
+      {!previewUri && !showTips && (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.centered]}>
           <View style={styles.frame} />
         </View>
       )}
-
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={styles.iconButton}
-          accessibilityRole="button"
-          accessibilityLabel="Close camera"
-          disabled={isWorking}
-        >
-          <Text style={styles.iconText}>✕</Text>
-        </Pressable>
-        <GpsChip accuracyM={position?.coords.accuracy ?? null} />
-        <Pressable
-          onPress={() => setShowTips((v) => !v)}
-          style={styles.iconButton}
-          accessibilityRole="button"
-          accessibilityLabel="Photo tips"
-          disabled={isWorking}
-        >
-          <Text style={styles.iconText}>?</Text>
-        </Pressable>
-      </View>
 
       {showTips && !previewUri && (
         <View style={[styles.tipsCard, { top: insets.top + 64 }]}>
@@ -201,6 +178,30 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
           </Pressable>
         </View>
       )}
+
+      {/* Top bar, drawn after the full-screen overlays so ✕ still works on the
+          error screen. While working, the buttons are disabled instead. */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.iconButton}
+          accessibilityRole="button"
+          accessibilityLabel="Close camera"
+          disabled={isWorking}
+        >
+          <Text style={styles.iconText}>✕</Text>
+        </Pressable>
+        <GpsChip accuracyM={position?.coords.accuracy ?? null} />
+        <Pressable
+          onPress={() => setShowTips((v) => !v)}
+          style={styles.iconButton}
+          accessibilityRole="button"
+          accessibilityLabel="Photo tips"
+          disabled={isWorking}
+        >
+          <Text style={styles.iconText}>?</Text>
+        </Pressable>
+      </View>
 
       {/* Bottom controls */}
       {capture.status === 'idle' && (

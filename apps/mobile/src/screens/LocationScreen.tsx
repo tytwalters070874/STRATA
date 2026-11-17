@@ -21,7 +21,14 @@ const INITIAL_REGION = {
   latitudeDelta: 8,
   longitudeDelta: 8,
 };
-const FIX_ZOOM_DELTA = 0.05;
+// Street-level enough to see nearby contacts. Set as a zoom level rather than
+// a region span: on Android a span is fitted to the map's padded size, and
+// right after onMapReady that fit could leave the map zoomed out.
+const FIX_ZOOM = 13;
+// The floating buttons above the sheet: 12 gap + 44 button + 8 clearance.
+// Included in the map's bottom padding so Google's logo, which must stay
+// visible, sits above them instead of underneath.
+const BUTTON_ROW_HEIGHT = 64;
 
 export default function LocationScreen({ navigation }: RootStackScreenProps<'Map'>) {
   const insets = useSafeAreaInsets();
@@ -41,10 +48,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
 
   const recenter = () => {
     if (!mapReady || lat == null || lng == null) return;
-    mapRef.current?.animateToRegion(
-      { latitude: lat, longitude: lng, latitudeDelta: FIX_ZOOM_DELTA, longitudeDelta: FIX_ZOOM_DELTA },
-      500,
-    );
+    mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: FIX_ZOOM }, { duration: 500 });
   };
 
   // Zoom to the user once, on the first fix after the map is ready; after
@@ -68,9 +72,16 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         showsUserLocation={permission === 'granted'}
         showsMyLocationButton={false}
         toolbarEnabled={false}
-        mapPadding={mapReady ? { top: insets.top, right: 0, bottom: sheetHeight, left: 0 } : undefined}
+        mapPadding={
+          mapReady
+            ? { top: insets.top, right: 0, bottom: sheetHeight + BUTTON_ROW_HEIGHT, left: 0 }
+            : undefined
+        }
         onMapReady={() => setMapReady(true)}
       />
+
+      {/* Keeps map labels from running under the clock and status icons. */}
+      <View pointerEvents="none" style={[styles.statusBarScrim, { height: insets.top }]} />
 
       {position && (
         <Pressable
@@ -205,6 +216,13 @@ function SheetContent({ permission, hasFix, accuracyM, formation, isLoading, err
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  statusBarScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.75)',
   },
   sheet: {
     position: 'absolute',
