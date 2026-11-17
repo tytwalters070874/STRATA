@@ -28,6 +28,11 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   const mapRef = useRef<MapView>(null);
   const hasCenteredRef = useRef(false);
   const [sheetHeight, setSheetHeight] = useState(0);
+  // react-native-maps (Android, new architecture) applies a changed
+  // mapPadding straight to the native GoogleMap, which is null until the map
+  // has loaded, and crashes the app. The sheet is measured before that, so
+  // padding and camera moves wait for onMapReady.
+  const [mapReady, setMapReady] = useState(false);
 
   const { permission, position } = useCurrentPosition('map');
   const lat = position?.coords.latitude;
@@ -35,21 +40,22 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   const { formation, isLoading, error } = useFormation(lat, lng);
 
   const recenter = () => {
-    if (lat == null || lng == null) return;
+    if (!mapReady || lat == null || lng == null) return;
     mapRef.current?.animateToRegion(
       { latitude: lat, longitude: lng, latitudeDelta: FIX_ZOOM_DELTA, longitudeDelta: FIX_ZOOM_DELTA },
       500,
     );
   };
 
-  // Zoom to the user once, on the first fix; after that they can pan freely.
+  // Zoom to the user once, on the first fix after the map is ready; after
+  // that they can pan freely.
   useEffect(() => {
-    if (!hasCenteredRef.current && lat != null && lng != null) {
+    if (mapReady && !hasCenteredRef.current && lat != null && lng != null) {
       hasCenteredRef.current = true;
       recenter();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat, lng]);
+  }, [mapReady, lat, lng]);
 
   return (
     <View style={styles.container}>
@@ -62,7 +68,8 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         showsUserLocation={permission === 'granted'}
         showsMyLocationButton={false}
         toolbarEnabled={false}
-        mapPadding={{ top: insets.top, right: 0, bottom: sheetHeight, left: 0 }}
+        mapPadding={mapReady ? { top: insets.top, right: 0, bottom: sheetHeight, left: 0 } : undefined}
+        onMapReady={() => setMapReady(true)}
       />
 
       {position && (
