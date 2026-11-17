@@ -1,4 +1,4 @@
-import { FunctionsHttpError } from '@supabase/supabase-js';
+import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
@@ -92,6 +92,30 @@ async function removeUploadedPhoto(photoPath: string) {
   if (error) console.warn('Could not remove uploaded photo', error);
 }
 
+const OFFLINE_MESSAGE = 'No connection. Move to where you have signal, then retake.';
+
+/**
+ * Whether a failed upload or function call never reached Supabase at all
+ * (no signal, DNS failure, dropped connection), as opposed to Supabase
+ * answering with an error. Offline failures get OFFLINE_MESSAGE instead of
+ * the low-level text, which on Android is a raw Java exception.
+ *
+ * Seen so far: a storage upload with no network fails with a message like
+ * "fetch failed: java.net.UnknownHostException: Unable to resolve host ...",
+ * and supabase.functions.invoke reports network failures as a
+ * FunctionsFetchError rather than a FunctionsHttpError.
+ */
+const NETWORK_ERROR_PATTERN =
+  /network request failed|fetch failed|unknownhost|unable to resolve host|sockettimeout|timed out|connection (reset|refused|abort)|failed to connect/i;
+
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof FunctionsFetchError) return true;
+  // Timeouts count: in the field they almost always mean weak signal, and the
+  // advice (move, then retake) is the same either way.
+  const message = error instanceof Error ? error.message : (error as { message?: unknown } | null)?.message;
+  return typeof message === 'string' && NETWORK_ERROR_PATTERN.test(message);
+}
+
 const timeFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
 interface FunctionErrorBody {
@@ -132,7 +156,9 @@ export async function identifyRock({
   const { error: uploadError } = await supabase.storage
     .from(ROCK_PHOTOS_BUCKET)
     .upload(photoPath, prepared.bytes, { contentType: 'image/jpeg' });
-  if (uploadError) throw new Error(`Photo upload failed: ${uploadError.message}`);
+  if (uploadError) {
+    throw new Error(isNetworkError(uploadError) ? OFFLINE_MESSAGE : `Photo upload failed: ${uploadError.message}`);
+  }
 
   onStage?.('identifying');
   // The function reads the photo from Storage, so it is uploaded only once.
@@ -150,6 +176,7 @@ export async function identifyRock({
     // attempts; this covers network failures it never sees.
     await removeUploadedPhoto(photoPath);
     if (!error) throw new Error('Identification returned no result');
+    if (isNetworkError(error)) throw new Error(OFFLINE_MESSAGE);
     const { message } = await readFunctionError(error);
     throw new Error(message);
   }

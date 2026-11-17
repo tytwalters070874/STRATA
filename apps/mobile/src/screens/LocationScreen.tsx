@@ -40,6 +40,10 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   // has loaded, and crashes the app. The sheet is measured before that, so
   // padding and camera moves wait for onMapReady.
   const [mapReady, setMapReady] = useState(false);
+  // The first zoom waits longer, for onMapLoaded (tiles drawn). Applying the
+  // padding above can cancel a camera move already in progress, and the
+  // padding goes on right after onMapReady, so a zoom started then was lost.
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const { permission, position } = useCurrentPosition('map');
   const lat = position?.coords.latitude;
@@ -51,15 +55,15 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
     mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: FIX_ZOOM }, { duration: 500 });
   };
 
-  // Zoom to the user once, on the first fix after the map is ready; after
+  // Zoom to the user once, on the first fix after the map has loaded; after
   // that they can pan freely.
   useEffect(() => {
-    if (mapReady && !hasCenteredRef.current && lat != null && lng != null) {
+    if (mapLoaded && !hasCenteredRef.current && lat != null && lng != null) {
       hasCenteredRef.current = true;
       recenter();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, lat, lng]);
+  }, [mapLoaded, lat, lng]);
 
   return (
     <View style={styles.container}>
@@ -78,6 +82,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
             : undefined
         }
         onMapReady={() => setMapReady(true)}
+        onMapLoaded={() => setMapLoaded(true)}
       />
 
       {/* Keeps map labels from running under the clock and status icons. */}
