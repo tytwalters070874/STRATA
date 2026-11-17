@@ -12,6 +12,19 @@ export const ROCK_PHOTOS_BUCKET = 'rock-photos';
 const MAX_EDGE_PX = 1568;
 const JPEG_QUALITY = 0.85;
 
+// Catalog rows show 64 pt thumbnails; 256 px covers 4x screens.
+const THUMB_EDGE_PX = 256;
+const THUMB_QUALITY = 0.7;
+
+/**
+ * Storage path of a photo's thumbnail, uploaded next to it. Derived by
+ * convention rather than stored, so older photos without one simply fall
+ * back to the full image.
+ */
+export function thumbnailPath(photoPath: string): string {
+  return photoPath.replace(/\.jpg$/, '.thumb.jpg');
+}
+
 export type IdentifyStage = 'preparing' | 'uploading' | 'identifying';
 
 export interface CapturedPhoto {
@@ -51,6 +64,26 @@ async function preparePhoto(photo: CapturedPhoto) {
   const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });
   const bytes = await new File(saved.uri).arrayBuffer();
   return { uri: saved.uri, bytes };
+}
+
+/**
+ * Makes and uploads a small thumbnail for the catalog list. Best effort: if
+ * it fails, the catalog shows the full photo instead.
+ */
+async function uploadThumbnail(sourceUri: string, photoPath: string) {
+  try {
+    const context = ImageManipulator.manipulate(sourceUri);
+    context.resize({ width: THUMB_EDGE_PX });
+    const image = await context.renderAsync();
+    const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: THUMB_QUALITY });
+    const bytes = await new File(saved.uri).arrayBuffer();
+    const { error } = await supabase.storage
+      .from(ROCK_PHOTOS_BUCKET)
+      .upload(thumbnailPath(photoPath), bytes, { contentType: 'image/jpeg' });
+    if (error) throw error;
+  } catch (e) {
+    console.warn('Could not upload thumbnail', e);
+  }
 }
 
 /** Best-effort cleanup; a leftover photo is not worth surfacing an error for. */
@@ -120,6 +153,11 @@ export async function identifyRock({
     const { message } = await readFunctionError(error);
     throw new Error(message);
   }
+
+  // Only successful identifications can be saved to the catalog, so the
+  // thumbnail is made now rather than before the upload, and the user isn't
+  // kept waiting for it.
+  void uploadThumbnail(prepared.uri, photoPath);
 
   return { result: data, photoUri: prepared.uri, photoPath };
 }

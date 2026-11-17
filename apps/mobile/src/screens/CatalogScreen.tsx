@@ -1,10 +1,10 @@
 import { useHeaderHeight } from '@react-navigation/elements';
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Pressable,
   RefreshControl,
@@ -101,8 +101,14 @@ function CatalogItem({ entry, expanded, onToggle }: CatalogItemProps) {
         accessibilityRole="button"
         accessibilityState={{ expanded }}
       >
-        {entry.photo_url ? (
-          <Image source={{ uri: entry.photo_url }} style={styles.thumb} />
+        {entry.thumbnail_url ? (
+          <Image
+            source={{ uri: entry.thumbnail_url, cacheKey: entry.thumbnail_cache_key ?? undefined }}
+            recyclingKey={entry.id}
+            style={styles.thumb}
+            contentFit="cover"
+            transition={150}
+          />
         ) : (
           <View style={[styles.thumb, styles.thumbPlaceholder]} />
         )}

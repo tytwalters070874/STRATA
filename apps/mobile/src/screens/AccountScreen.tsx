@@ -131,6 +131,9 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
           onPress: () => void run(async () => {
             const { error: signOutError } = await supabase.auth.signOut();
             if (signOutError) throw signOutError;
+            // The catalog is cached on the phone; don't leave it behind for
+            // the next (guest) session.
+            queryClient.clear();
             navigation.popTo('Map');
           }),
         },

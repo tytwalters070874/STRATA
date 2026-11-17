@@ -41,7 +41,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
   const cameraRef = useRef<CameraView>(null);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const { permission: locationPermission, position } = useCurrentPosition();
+  const { permission: locationPermission, position } = useCurrentPosition('capture');
   const { session, isLoading: authLoading, error: authError, retry: retryAuth } = useAuth();
 
   const [cameraReady, setCameraReady] = useState(false);

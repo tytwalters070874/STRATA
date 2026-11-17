@@ -1,43 +1,28 @@
-import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
+import { useContext, useEffect, useId } from 'react';
 
-export type PermissionState = 'pending' | 'granted' | 'denied';
+import { LocationContext, type LocationMode } from '../lib/location';
 
-/** Requests foreground location permission and tracks the device position while mounted. */
-export function useCurrentPosition() {
-  const [permission, setPermission] = useState<PermissionState>('pending');
-  const [position, setPosition] = useState<Location.LocationObject | null>(null);
+export type { PermissionState } from '../lib/location';
+
+/**
+ * The device position, from the app's shared GPS subscription. GPS only runs
+ * while the calling screen is focused, so screens left mounted underneath
+ * (the map, behind the camera) don't keep it on.
+ */
+export function useCurrentPosition(mode: LocationMode) {
+  const context = useContext(LocationContext);
+  if (!context) throw new Error('useCurrentPosition must be used inside <LocationProvider>');
+  const { permission, position, setDemand } = context;
+
+  const id = useId();
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    let subscription: Location.LocationSubscription | null = null;
-    let cancelled = false;
-
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (cancelled) return;
-      if (status !== 'granted') {
-        setPermission('denied');
-        return;
-      }
-      setPermission('granted');
-
-      // Show something immediately while waiting for a fresh fix.
-      const lastKnown = await Location.getLastKnownPositionAsync();
-      if (!cancelled && lastKnown) setPosition(lastKnown);
-
-      const sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 5000 },
-        (next) => setPosition(next),
-      );
-      if (cancelled) sub.remove();
-      else subscription = sub;
-    })();
-
-    return () => {
-      cancelled = true;
-      subscription?.remove();
-    };
-  }, []);
+    if (!isFocused) return;
+    setDemand(id, mode);
+    return () => setDemand(id, null);
+  }, [id, isFocused, mode, setDemand]);
 
   return { permission, position };
 }

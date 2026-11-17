@@ -29,7 +29,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   const hasCenteredRef = useRef(false);
   const [sheetHeight, setSheetHeight] = useState(0);
 
-  const { permission, position } = useCurrentPosition();
+  const { permission, position } = useCurrentPosition('map');
   const lat = position?.coords.latitude;
   const lng = position?.coords.longitude;
   const { formation, isLoading, error } = useFormation(lat, lng);

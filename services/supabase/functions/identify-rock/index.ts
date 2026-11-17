@@ -369,6 +369,7 @@ async function identifyWithOpenAI(
 // ── Handler ────────────────────────────────────────────────────────────────
 
 Deno.serve(async (request) => {
+  const requestStart = Date.now();
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -499,17 +500,22 @@ Deno.serve(async (request) => {
   }
 
   let outcome: ProviderOutcome | null = null;
-  const failures: { provider: string; error: string }[] = [];
+  const failures: { provider: string; error: string; duration_ms: number }[] = [];
+  // Model latency, recorded so model and effort choices can be compared on
+  // real traffic.
+  let modelMs = 0;
 
   for (const attempt of [identifyWithAnthropic, identifyWithOpenAI]) {
+    const attemptStart = Date.now();
     try {
       outcome = await attempt(readyReq, prompt, context);
+      modelMs = Date.now() - attemptStart;
       break;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const provider = attempt === identifyWithAnthropic ? "anthropic" : "openai";
       console.error(`${provider} identification failed:`, message);
-      failures.push({ provider, error: message });
+      failures.push({ provider, error: message, duration_ms: Date.now() - attemptStart });
     }
   }
 
@@ -537,7 +543,14 @@ Deno.serve(async (request) => {
       confidence_score: Number(outcome.result.confidence.toFixed(3)),
       confidence_tier: tier,
       ai_provider: outcome.provider,
-      ai_response_raw: { ...(outcome.raw as object), model: outcome.model, result: outcome.result, failures },
+      ai_response_raw: {
+        ...(outcome.raw as object),
+        model: outcome.model,
+        result: outcome.result,
+        failures,
+        model_ms: modelMs,
+        total_ms: Date.now() - requestStart,
+      },
       status: "complete",
       completed_at: new Date().toISOString(),
     })
