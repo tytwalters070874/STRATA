@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
 export type PermissionState = 'pending' | 'granted' | 'denied';
@@ -39,6 +39,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<PermissionState>('pending');
   const [position, setPosition] = useState<Location.LocationObject | null>(null);
   const [demands, setDemands] = useState<Record<string, LocationMode>>({});
+  // Whether Google's "Location Accuracy" prompt has been offered this launch.
+  // Android shows it when GPS starts and that setting is off. The prompt
+  // backgrounds the app, which stops GPS; restarting GPS would show it again,
+  // looping for anyone who declines. So it is offered once per launch only.
+  const accuracyPromptOfferedRef = useRef(false);
   // The app is on screen when this first renders. AppState.currentState can
   // still read 'background' here: Android reports the state from before the
   // activity resumed, and the correction can arrive before the listener
@@ -112,7 +117,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       const lastKnown = await Location.getLastKnownPositionAsync();
       if (!cancelled && lastKnown) setPosition((current) => current ?? lastKnown);
 
-      const sub = await Location.watchPositionAsync(WATCH_OPTIONS[wanted], (next) => setPosition(next));
+      const mayShowUserSettingsDialog = !accuracyPromptOfferedRef.current;
+      accuracyPromptOfferedRef.current = true;
+      const sub = await Location.watchPositionAsync(
+        { ...WATCH_OPTIONS[wanted], mayShowUserSettingsDialog },
+        (next) => setPosition(next),
+      );
       if (cancelled) sub.remove();
       else subscription = sub;
     })();
