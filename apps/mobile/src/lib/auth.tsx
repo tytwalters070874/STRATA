@@ -1,15 +1,25 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { supabase } from './supabase';
 
+const GUEST_KEY = 'strata-guest-mode';
+
 interface AuthState {
   session: Session | null;
-  /** True until the stored session has been read (and an anonymous one created if needed). */
+  /** True until the stored session and guest choice have been read (and an anonymous session created if needed). */
   isLoading: boolean;
   error: Error | null;
   /** Retry anonymous sign-in, e.g. after a first launch with no signal. */
   retry: () => Promise<void>;
+  /** A real account is signed in (not an anonymous session). Required for identifying rocks and the catalog. */
+  isSignedIn: boolean;
+  /** The user chose to continue without signing in: map and formation lookup only. */
+  guestMode: boolean;
+  enterGuestMode: () => void;
+  /** Leaves guest mode, so the landing page shows again. */
+  leaveGuestMode: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -28,6 +38,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // null until the saved guest choice has been read.
+  const [guestMode, setGuestMode] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(GUEST_KEY)
+      .then((value) => setGuestMode(value === '1'))
+      .catch(() => setGuestMode(false));
+  }, []);
+
+  const enterGuestMode = useCallback(() => {
+    setGuestMode(true);
+    AsyncStorage.setItem(GUEST_KEY, '1').catch(() => undefined);
+  }, []);
+
+  const leaveGuestMode = useCallback(() => {
+    setGuestMode(false);
+    AsyncStorage.removeItem(GUEST_KEY).catch(() => undefined);
+  }, []);
 
   const ensureSession = useCallback(async () => {
     setIsLoading(true);
@@ -56,19 +84,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         else setTimeout(() => void ensureSession(), 0);
       } else if (event === 'SIGNED_OUT') {
         // Sign-out, or a stored refresh token that was rejected: start a
-        // fresh anonymous session.
+        // fresh anonymous session, and show the landing page again.
+        leaveGuestMode();
         setTimeout(() => void ensureSession(), 0);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [ensureSession]);
+  }, [ensureSession, leaveGuestMode]);
 
-  return (
-    <AuthContext.Provider value={{ session, isLoading, error, retry: ensureSession }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthState = {
+    session,
+    isLoading: isLoading || guestMode === null,
+    error,
+    retry: ensureSession,
+    isSignedIn: session != null && !session.user.is_anonymous,
+    guestMode: guestMode === true,
+    enterGuestMode,
+    leaveGuestMode,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

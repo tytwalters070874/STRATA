@@ -1,20 +1,48 @@
 import { Image } from 'expo-image';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useFormationImages } from '../hooks/useFormationImages';
 import type { Formation } from '../hooks/useFormation';
+import { useFormationImages } from '../hooks/useFormationImages';
+import { useMacrostratUnit } from '../hooks/useMacrostratUnit';
 
 interface FormationDetailsProps {
   formation: Formation;
+  /** The map point the formation was looked up at; Macrostrat details are for this point. */
+  point: { lat: number; lng: number };
 }
 
-/** "Morrison Formation" details: age, rock types, description, example photos and source. */
-export default function FormationDetails({ formation }: FormationDetailsProps) {
+/** Rounds an age in Ma for display: 1 decimal under 10 Ma, whole numbers above. */
+function formatMa(value: number): string {
+  return value < 10 ? value.toFixed(1) : String(Math.round(value));
+}
+
+/**
+ * The formation under a map point: name, map unit, period and age, rock types,
+ * environment of deposition, description, example photos and source.
+ *
+ * The imported formation table only has the name, map unit, rock types and a
+ * rock class (stored in its geologic_age column). Age, description,
+ * environment and source come from Macrostrat for the same point.
+ */
+export default function FormationDetails({ formation, point }: FormationDetailsProps) {
   const { data: images } = useFormationImages(formation.name);
-  const ageRange =
-    formation.age_ma_min != null && formation.age_ma_max != null
-      ? `${formation.age_ma_min}–${formation.age_ma_max} Ma`
+  const macrostrat = useMacrostratUnit(point);
+  const unit = macrostrat.data ?? null;
+
+  const ageText = unit
+    ? [unit.period, unit.ageMa && `${formatMa(unit.ageMa.min)}–${formatMa(unit.ageMa.max)} Ma`]
+        .filter(Boolean)
+        .join(' · ')
+    : null;
+  // The import wrote "<name> — <rock class>" as the description; it adds nothing.
+  const ownDescription =
+    formation.description && !formation.description.startsWith(`${formation.name} —`)
+      ? formation.description
       : null;
+  const description = unit?.description ?? ownDescription;
+  const sourceUrl = formation.source_url ?? unit?.sourceUrl ?? null;
+  // Macrostrat's unit can come from a different map than the formation table.
+  const unitDiffers = unit != null && unit.name.toLowerCase() !== formation.name.toLowerCase();
 
   return (
     <View style={styles.container}>
@@ -29,11 +57,8 @@ export default function FormationDetails({ formation }: FormationDetailsProps) {
         )}
       </View>
 
-      {(formation.geologic_age || ageRange) && (
-        <Text style={styles.age}>
-          {[formation.geologic_age, ageRange].filter(Boolean).join(' · ')}
-        </Text>
-      )}
+      {ageText ? <Text style={styles.age}>{ageText}</Text> : null}
+      {formation.geologic_age && <Text style={styles.meta}>Rock class: {formation.geologic_age}</Text>}
 
       {formation.rock_types && formation.rock_types.length > 0 && (
         <View style={styles.chips}>
@@ -45,7 +70,26 @@ export default function FormationDetails({ formation }: FormationDetailsProps) {
         </View>
       )}
 
-      {formation.description && <Text style={styles.body}>{formation.description}</Text>}
+      {unit && unit.environments.length > 0 && (
+        <Text style={styles.body}>
+          <Text style={styles.label}>Deposited in: </Text>
+          {unit.environments.join(', ')}
+        </Text>
+      )}
+
+      {description && <Text style={styles.body}>{description}</Text>}
+
+      {macrostrat.isLoading && (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" />
+          <Text style={styles.meta}>Loading age and description…</Text>
+        </View>
+      )}
+      {!macrostrat.isLoading && !unit && !ownDescription && (
+        <Text style={styles.meta}>
+          {macrostrat.error ? 'Age and description unavailable offline.' : 'No detailed description for this spot.'}
+        </Text>
+      )}
 
       {images && images.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
@@ -62,14 +106,15 @@ export default function FormationDetails({ formation }: FormationDetailsProps) {
         </ScrollView>
       )}
 
-      {formation.source_url && (
-        <Pressable
-          onPress={() => Linking.openURL(formation.source_url!)}
-          accessibilityRole="link"
-          style={styles.sourceButton}
-        >
+      {sourceUrl && (
+        <Pressable onPress={() => Linking.openURL(sourceUrl)} accessibilityRole="link" style={styles.sourceButton}>
           <Text style={styles.sourceText}>View source</Text>
         </Pressable>
+      )}
+      {unit && (
+        <Text style={styles.attribution}>
+          {unitDiffers ? `Details for Macrostrat unit "${unit.name}". ` : ''}Unit data: Macrostrat (CC BY 4.0).
+        </Text>
       )}
     </View>
   );
@@ -104,6 +149,23 @@ const styles = StyleSheet.create({
   age: {
     fontSize: 15,
     color: '#4a463e',
+  },
+  meta: {
+    fontSize: 13,
+    color: '#8a857a',
+  },
+  label: {
+    fontWeight: '600',
+    color: '#3a372f',
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  attribution: {
+    fontSize: 11,
+    color: '#8a857a',
   },
   chips: {
     flexDirection: 'row',

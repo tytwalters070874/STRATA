@@ -241,8 +241,15 @@ pass = "env(RESEND_API_KEY)"
 admin_email = "onboarding@resend.dev"
 sender_name = "STRATA"
 
-# Both templates must show {{ .Token }}: the app asks for the 6-digit code,
-# and the default templates only contain a link.
+# These templates must show {{ .Token }}: the app asks for the code, and the
+# default templates only contain a link. A new user signing in by email gets
+# the confirmation template (confirmations are on); a returning user gets
+# magic_link; adding an email to an account gets email_change. The live
+# project's code length is set in the dashboard (8 digits as of 2026-11-17).
+[auth.email.template.confirmation]
+subject = "Your STRATA sign-up code"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.email.template.email_change]
 subject = "Your STRATA confirmation code"
 content_path = "./supabase/templates/email_change.html"

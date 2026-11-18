@@ -12,6 +12,7 @@ import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import FormationDetails from '../components/FormationDetails';
+import { useAuth } from '../lib/auth';
 import { useCurrentPosition, type PermissionState } from '../hooks/useCurrentPosition';
 import { useFormation, type Formation } from '../hooks/useFormation';
 import { useFormationAt } from '../hooks/useFormationAt';
@@ -54,10 +55,11 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   // padding goes on right after onMapReady, so a zoom started then was lost.
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  const { isSignedIn, leaveGuestMode } = useAuth();
   const { permission, position, gpsError } = useCurrentPosition('map');
   const lat = position?.coords.latitude;
   const lng = position?.coords.longitude;
-  const { formation, isLoading, error } = useFormation(lat, lng);
+  const { formation, point: formationPoint, isLoading, error } = useFormation(lat, lng);
 
   // A point the user tapped on the map. When set, the sheet shows the formation
   // under that point instead of the one under the GPS fix.
@@ -117,23 +119,37 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         </Pressable>
       )}
 
-      <Pressable
-        onPress={() => navigation.navigate('Catalog')}
-        style={[styles.catalogButton, { top: insets.top + 12 }]}
-        accessibilityRole="button"
-        accessibilityLabel="My catalog"
-      >
-        <Text style={styles.catalogButtonText}>Catalog</Text>
-      </Pressable>
+      {isSignedIn ? (
+        <>
+          <Pressable
+            onPress={() => navigation.navigate('Catalog')}
+            style={[styles.catalogButton, { top: insets.top + 12 }]}
+            accessibilityRole="button"
+            accessibilityLabel="My catalog"
+          >
+            <Text style={styles.catalogButtonText}>Catalog</Text>
+          </Pressable>
 
-      <Pressable
-        onPress={() => navigation.navigate('Camera')}
-        style={[styles.cameraButton, { bottom: sheetHeight + 12 }]}
-        accessibilityRole="button"
-        accessibilityLabel="Identify a rock"
-      >
-        <Text style={styles.cameraButtonText}>Identify rock</Text>
-      </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('Camera')}
+            style={[styles.cameraButton, { bottom: sheetHeight + 12 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Identify a rock"
+          >
+            <Text style={styles.cameraButtonText}>Identify rock</Text>
+          </Pressable>
+        </>
+      ) : (
+        // Guests see the map only. Signing in returns to the landing page.
+        <Pressable
+          onPress={leaveGuestMode}
+          style={[styles.catalogButton, { top: insets.top + 12 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in for catalog and rock identification"
+        >
+          <Text style={styles.catalogButtonText}>Sign in</Text>
+        </Pressable>
+      )}
 
       <View
         style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
@@ -161,7 +177,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
                 <Text style={styles.body}>{tappedFormation.error.message}</Text>
               </>
             ) : tappedFormation.formation ? (
-              <FormationDetails formation={tappedFormation.formation} />
+              <FormationDetails formation={tappedFormation.formation} point={tapped} />
             ) : (
               <>
                 <Text style={styles.title}>No formation data here</Text>
@@ -170,15 +186,18 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
             )}
           </ScrollView>
         ) : (
-          <SheetContent
-            permission={permission}
-            gpsError={gpsError}
-            hasFix={position != null}
-            accuracyM={position?.coords.accuracy ?? null}
-            formation={formation}
-            isLoading={isLoading}
-            error={error}
-          />
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetScrollContent}>
+            <SheetContent
+              permission={permission}
+              gpsError={gpsError}
+              hasFix={position != null}
+              accuracyM={position?.coords.accuracy ?? null}
+              formation={formation}
+              point={formationPoint}
+              isLoading={isLoading}
+              error={error}
+            />
+          </ScrollView>
         )}
       </View>
     </View>
@@ -191,11 +210,13 @@ interface SheetContentProps {
   hasFix: boolean;
   accuracyM: number | null;
   formation: Formation | null;
+  /** The point the GPS formation was looked up at. */
+  point: { lat: number; lng: number } | null;
   isLoading: boolean;
   error: Error | null;
 }
 
-function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, isLoading, error }: SheetContentProps) {
+function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, point, isLoading, error }: SheetContentProps) {
   if (permission === 'denied') {
     return (
       <>
@@ -248,29 +269,9 @@ function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, isLo
 
   return (
     <>
-      <View style={styles.titleRow}>
-        <Text style={styles.title} numberOfLines={2}>
-          {formation.name}
-        </Text>
-        {formation.map_unit_symbol && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{formation.map_unit_symbol}</Text>
-          </View>
-        )}
-      </View>
-
-      {formation.geologic_age && <Text style={styles.age}>{formation.geologic_age}</Text>}
-
-      {formation.rock_types && formation.rock_types.length > 0 && (
-        <View style={styles.chips}>
-          {formation.rock_types.map((rock) => (
-            <View key={rock} style={styles.chip}>
-              <Text style={styles.chipText}>{rock}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
+      {point ? (
+        <FormationDetails formation={formation} point={point} />
+      ) : null}
       {accuracyM != null && (
         <Text style={styles.meta}>GPS accuracy ±{Math.round(accuracyM)} m</Text>
       )}

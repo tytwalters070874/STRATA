@@ -78,6 +78,8 @@ export function useFormation(lat: number | null | undefined, lng: number | null 
   });
 
   return {
+    /** The point the current lookup was made from (moves every RELOOKUP_DISTANCE_M). */
+    point: anchor,
     formation: query.data ?? null,
     isLoading: query.isLoading,
     isFetching: query.isFetching,

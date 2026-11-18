@@ -165,7 +165,8 @@ function CatalogDetails({ entry }: { entry: CatalogEntry }) {
           {entry.map_unit_symbol ? ` (${entry.map_unit_symbol})` : ''}
         </Text>
       )}
-      {entry.geologic_age && <Text style={styles.detailLine}>Age: {entry.geologic_age}</Text>}
+      {/* formation.geologic_age holds the rock class from the import, not an age. */}
+      {entry.geologic_age && <Text style={styles.detailLine}>Rock class: {entry.geologic_age}</Text>}
 
       <Text style={styles.notesLabel}>Notes</Text>
       <TextInput
