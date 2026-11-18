@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Formation } from '../hooks/useFormation';
 import { useFormationImages } from '../hooks/useFormationImages';
@@ -40,7 +40,14 @@ export default function FormationDetails({ formation, point }: FormationDetailsP
       ? formation.description
       : null;
   const description = unit?.description ?? ownDescription;
-  const sourceUrl = formation.source_url ?? unit?.sourceUrl ?? null;
+  // Known from the point alone, so the link is there before Macrostrat answers
+  // and never moves when the description and photos load below it.
+  const sourceUrl = formation.source_url ?? `https://macrostrat.org/map/loc/${point.lng}/${point.lat}`;
+  const openSource = () => {
+    Linking.openURL(sourceUrl).catch(() =>
+      Alert.alert("Couldn't open the source", 'No app on this phone can open web links.'),
+    );
+  };
   // Macrostrat's unit can come from a different map than the formation table.
   const unitDiffers = unit != null && unit.name.toLowerCase() !== formation.name.toLowerCase();
 
@@ -56,6 +63,16 @@ export default function FormationDetails({ formation, point }: FormationDetailsP
           </View>
         )}
       </View>
+
+      <Pressable
+        onPress={openSource}
+        accessibilityRole="link"
+        accessibilityLabel={`View source for ${formation.name}`}
+        hitSlop={8}
+        style={styles.sourceButton}
+      >
+        <Text style={styles.sourceText}>View source ›</Text>
+      </Pressable>
 
       {ageText ? <Text style={styles.age}>{ageText}</Text> : null}
       {formation.geologic_age && <Text style={styles.meta}>Rock class: {formation.geologic_age}</Text>}
@@ -106,11 +123,6 @@ export default function FormationDetails({ formation, point }: FormationDetailsP
         </ScrollView>
       )}
 
-      {sourceUrl && (
-        <Pressable onPress={() => Linking.openURL(sourceUrl)} accessibilityRole="link" style={styles.sourceButton}>
-          <Text style={styles.sourceText}>View source</Text>
-        </Pressable>
-      )}
       {unit && (
         <Text style={styles.attribution}>
           {unitDiffers ? `Details for Macrostrat unit "${unit.name}". ` : ''}Unit data: Macrostrat (CC BY 4.0).

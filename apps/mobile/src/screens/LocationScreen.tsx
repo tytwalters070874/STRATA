@@ -71,6 +71,14 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
     mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: FIX_ZOOM }, { duration: 500 });
   };
 
+  // The location button returns both the map and the sheet to the user's own
+  // position. Recentring alone left the sheet on a tapped point, which looked
+  // like the button did nothing.
+  const goToMyLocation = () => {
+    setTapped(null);
+    recenter();
+  };
+
   // Zoom to the user once, on the first fix after the map has loaded; after
   // that they can pan freely.
   useEffect(() => {
@@ -110,7 +118,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
 
       {position && (
         <Pressable
-          onPress={recenter}
+          onPress={goToMyLocation}
           style={[styles.recenterButton, { bottom: sheetHeight + 12 }]}
           accessibilityRole="button"
           accessibilityLabel="Center map on my location"
@@ -321,8 +329,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 8,
   },
+  // A fixed height, not a maximum: when the sheet grew as details and photos
+  // loaded, the buttons above it jumped (taps landed on the map instead), and
+  // each change re-applied the map padding, which cancels a camera move in
+  // progress.
   sheetScroll: {
-    maxHeight: 380,
+    height: 320,
   },
   sheetScrollContent: {
     gap: 10,
