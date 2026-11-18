@@ -13,11 +13,9 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
   const isNotRock = result.rock_type.toLowerCase() === 'not a rock';
   // The server already classified the confidence; use its tier, not a copy of the thresholds.
   const isLowConfidence = result.confidence_tier === 'low';
+  // The formation comes from the map, not the photo: it is kept only so the
+  // catalog entry can reference it when saved.
   const mapped = result.mapped_formation;
-  const guessMatchesMap =
-    mapped != null &&
-    result.formation_guess != null &&
-    result.formation_guess.toLowerCase() === mapped.name.toLowerCase();
   const canSave = result.identification_id != null && !isNotRock;
 
   return (
@@ -47,24 +45,6 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
             </>
           )}
         </View>
-
-        {(result.formation_guess || mapped) && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Formation</Text>
-            {result.formation_guess && (
-              <Row label="Likely source" value={result.formation_guess} />
-            )}
-            {mapped && !guessMatchesMap && (
-              <Row
-                label="Mapped here"
-                value={[mapped.name, mapped.map_unit_symbol && `(${mapped.map_unit_symbol})`]
-                  .filter(Boolean)
-                  .join(' ')}
-              />
-            )}
-            {mapped?.geologic_age && <Row label="Age" value={mapped.geologic_age} />}
-          </View>
-        )}
 
         {result.minerals_visible.length > 0 && (
           <View style={styles.card}>
@@ -125,15 +105,6 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
           )}
         </View>
       </View>
-    </View>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
     </View>
   );
 }

@@ -90,7 +90,8 @@ interface CatalogItemProps {
 }
 
 function CatalogItem({ entry, expanded, onToggle }: CatalogItemProps) {
-  const formation = entry.formation_guess ?? entry.formation_name;
+  // Rock type comes from the photo; the formation comes from where it was found.
+  const formation = entry.formation_name;
   const coords = formatCoords(entry.lat, entry.lng);
 
   return (
@@ -158,9 +159,9 @@ function CatalogDetails({ entry }: { entry: CatalogEntry }) {
     <View style={styles.details}>
       {entry.confidence_score != null && <ConfidenceMeter confidence={entry.confidence_score} />}
 
-      {entry.formation_name && entry.formation_name !== entry.formation_guess && (
+      {entry.formation_name && (
         <Text style={styles.detailLine}>
-          Mapped here: {entry.formation_name}
+          Formation: {entry.formation_name}
           {entry.map_unit_symbol ? ` (${entry.map_unit_symbol})` : ''}
         </Text>
       )}

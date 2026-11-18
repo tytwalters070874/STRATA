@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -10,8 +11,10 @@ import {
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import FormationDetails from '../components/FormationDetails';
 import { useCurrentPosition, type PermissionState } from '../hooks/useCurrentPosition';
 import { useFormation, type Formation } from '../hooks/useFormation';
+import { useFormationAt } from '../hooks/useFormationAt';
 import type { RootStackScreenProps } from '../navigation/types';
 
 // Roughly the center of MT/WY, shown until the first GPS fix arrives.
@@ -29,6 +32,12 @@ const FIX_ZOOM = 13;
 // Included in the map's bottom padding so Google's logo, which must stay
 // visible, sits above them instead of underneath.
 const BUTTON_ROW_HEIGHT = 64;
+
+function formatCoords(lat: number, lng: number): string {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lng >= 0 ? 'E' : 'W';
+  return `${Math.abs(lat).toFixed(4)}° ${ns}, ${Math.abs(lng).toFixed(4)}° ${ew}`;
+}
 
 export default function LocationScreen({ navigation }: RootStackScreenProps<'Map'>) {
   const insets = useSafeAreaInsets();
@@ -49,6 +58,11 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
   const lat = position?.coords.latitude;
   const lng = position?.coords.longitude;
   const { formation, isLoading, error } = useFormation(lat, lng);
+
+  // A point the user tapped on the map. When set, the sheet shows the formation
+  // under that point instead of the one under the GPS fix.
+  const [tapped, setTapped] = useState<{ lat: number; lng: number } | null>(null);
+  const tappedFormation = useFormationAt(tapped);
 
   const recenter = () => {
     if (!mapReady || lat == null || lng == null) return;
@@ -83,6 +97,10 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         }
         onMapReady={() => setMapReady(true)}
         onMapLoaded={() => setMapLoaded(true)}
+        onPress={(e) => {
+          const { latitude, longitude } = e.nativeEvent.coordinate;
+          setTapped({ lat: latitude, lng: longitude });
+        }}
       />
 
       {/* Keeps map labels from running under the clock and status icons. */}
@@ -122,15 +140,46 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
         onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}
       >
         <View style={styles.handle} />
-        <SheetContent
-          permission={permission}
-          gpsError={gpsError}
-          hasFix={position != null}
-          accuracyM={position?.coords.accuracy ?? null}
-          formation={formation}
-          isLoading={isLoading}
-          error={error}
-        />
+        {tapped ? (
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetScrollContent}>
+            <View style={styles.tappedHeader}>
+              <Text style={styles.meta}>
+                {formatCoords(tapped.lat, tapped.lng)}
+              </Text>
+              <Pressable onPress={() => setTapped(null)} accessibilityRole="button" hitSlop={8}>
+                <Text style={styles.linkText}>Use my location</Text>
+              </Pressable>
+            </View>
+            {tappedFormation.isLoading ? (
+              <View style={styles.row}>
+                <ActivityIndicator />
+                <Text style={styles.body}>Looking up formation…</Text>
+              </View>
+            ) : tappedFormation.error ? (
+              <>
+                <Text style={styles.title}>Couldn't load formation</Text>
+                <Text style={styles.body}>{tappedFormation.error.message}</Text>
+              </>
+            ) : tappedFormation.formation ? (
+              <FormationDetails formation={tappedFormation.formation} />
+            ) : (
+              <>
+                <Text style={styles.title}>No formation data here</Text>
+                <Text style={styles.body}>STRATA currently covers Montana and Wyoming.</Text>
+              </>
+            )}
+          </ScrollView>
+        ) : (
+          <SheetContent
+            permission={permission}
+            gpsError={gpsError}
+            hasFix={position != null}
+            accuracyM={position?.coords.accuracy ?? null}
+            formation={formation}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
       </View>
     </View>
   );
@@ -270,6 +319,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 8,
+  },
+  sheetScroll: {
+    maxHeight: 380,
+  },
+  sheetScrollContent: {
+    gap: 10,
+    paddingBottom: 8,
+  },
+  tappedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  linkText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b4f2a',
   },
   titleRow: {
     flexDirection: 'row',

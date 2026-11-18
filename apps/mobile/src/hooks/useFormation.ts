@@ -40,7 +40,7 @@ interface Point {
   lng: number;
 }
 
-async function fetchFormationAt(lat: number, lng: number): Promise<Formation | null> {
+export async function fetchFormationAt(lat: number, lng: number): Promise<Formation | null> {
   const { data, error } = await supabase
     .rpc('get_formation_at', { lat, lng })
     .maybeSingle<Formation>();
