@@ -10,7 +10,16 @@ export const PERSIST_MAX_AGE_MS = 7 * DAY_MS;
 
 // Only these survive restarts, so the map and catalog still show something
 // in the field with no signal. Everything else is cheap or must be fresh.
-const PERSISTED_QUERY_ROOTS = new Set(['formation', 'formation-at', 'formation-images', 'macrostrat', 'catalog']);
+const PERSISTED_QUERY_ROOTS = new Set([
+  'formation',
+  'formation-at',
+  'formation-images',
+  'formation-summary',
+  'macrostrat',
+  'nearby',
+  'protected-area',
+  'catalog',
+]);
 
 export const queryClient = new QueryClient({
   defaultOptions: {

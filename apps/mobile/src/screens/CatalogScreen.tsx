@@ -157,7 +157,7 @@ function CatalogDetails({ entry }: { entry: CatalogEntry }) {
 
   return (
     <View style={styles.details}>
-      {entry.confidence_score != null && <ConfidenceMeter confidence={entry.confidence_score} />}
+      {entry.confidence_score != null && <ConfidenceMeter confidence={entry.confidence_score} explain={false} />}
 
       {entry.formation_name && (
         <Text style={styles.detailLine}>

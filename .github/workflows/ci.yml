@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        function: [identify-rock, delete-account]
+        function: [identify-rock, delete-account, generate-summaries]
     defaults:
       run:
         working-directory: services/supabase/functions/${{ matrix.function }}

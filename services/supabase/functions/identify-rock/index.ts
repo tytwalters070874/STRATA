@@ -59,12 +59,21 @@ type ReadyRequest = IdentifyRequest & { image_base64: string };
 
 // The photo identifies the rock type only; the formation comes from the map.
 // The model is not asked for a formation (prompt rock-id-v2 onward).
+interface Alternate {
+  rock_type: string;
+  confidence: number;
+}
+
 interface ModelResult {
   rock_type: string;
   confidence: number;
   reasoning: string;
   minerals_visible: string[];
+  /** Up to three other plausible rock types, most likely first (PRD 3.2, prompt rock-id-v3). */
+  alternates: Alternate[];
 }
+
+const MAX_ALTERNATES = 3;
 
 type ConfidenceTier = "high" | "moderate" | "low";
 
@@ -101,8 +110,22 @@ const RESULT_SCHEMA = {
     confidence: { type: "number", description: "Probability from 0 to 1 that rock_type is correct." },
     reasoning: { type: "string" },
     minerals_visible: { type: "array", items: { type: "string" } },
+    // No maxItems: not every provider's strict mode supports it. The prompt
+    // asks for up to three and the parser keeps three.
+    alternates: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rock_type: { type: "string" },
+          confidence: { type: "number" },
+        },
+        required: ["rock_type", "confidence"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["rock_type", "confidence", "reasoning", "minerals_visible"],
+  required: ["rock_type", "confidence", "reasoning", "minerals_visible", "alternates"],
   additionalProperties: false,
 } as const;
 
@@ -144,13 +167,36 @@ function parseModelResult(text: string): ModelResult {
     data.minerals_visible.every((m: unknown) => typeof m === "string");
   if (!valid) throw new Error(`Model output did not match schema: ${text.slice(0, 500)}`);
 
+  const rockType = data.rock_type.trim();
   return {
-    rock_type: data.rock_type.trim(),
+    rock_type: rockType,
     confidence: Math.min(1, Math.max(0, data.confidence)),
     reasoning: data.reasoning.trim(),
     // Duplicates would make the app render two chips with the same React key.
     minerals_visible: [...new Set<string>(data.minerals_visible.map((m: string) => m.trim()))],
+    alternates: parseAlternates(data.alternates, rockType),
   };
+}
+
+/**
+ * Keeps well-formed alternates that differ from the main rock type, one per
+ * rock type, most likely first, at most three. Missing or malformed input
+ * (older prompts, a provider ignoring the schema) gives an empty list rather
+ * than failing the identification.
+ */
+function parseAlternates(raw: unknown, rockType: string): Alternate[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set([rockType.toLowerCase()]);
+  const alternates: Alternate[] = [];
+  for (const item of raw) {
+    if (typeof item?.rock_type !== "string" || typeof item?.confidence !== "number") continue;
+    if (!Number.isFinite(item.confidence)) continue;
+    const name = item.rock_type.trim();
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    alternates.push({ rock_type: name, confidence: Math.min(1, Math.max(0, item.confidence)) });
+  }
+  return alternates.sort((a, b) => b.confidence - a.confidence).slice(0, MAX_ALTERNATES);
 }
 
 function validateRequest(body: unknown): IdentifyRequest | string {
@@ -572,6 +618,7 @@ Deno.serve(async (request) => {
     confidence_tier: tier,
     reasoning: outcome.result.reasoning,
     minerals_visible: outcome.result.minerals_visible,
+    alternates: outcome.result.alternates,
     mapped_formation: formation
       ? {
         id: formation.id,
