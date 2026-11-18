@@ -4,7 +4,11 @@ export type ConfidenceTier = 'high' | 'moderate' | 'low';
 export interface IdentificationResult {
   identification_id: string | null;
   rock_type: string;
-  formation_guess: string | null;
+  /**
+   * @deprecated Always null since prompt rock-id-v2: the photo identifies the
+   * rock type only and the formation comes from the map. Use mapped_formation.
+   */
+  formation_guess: null;
   confidence: number;
   confidence_tier: ConfidenceTier;
   reasoning: string;

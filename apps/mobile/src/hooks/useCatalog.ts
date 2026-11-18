@@ -15,6 +15,7 @@ export interface CatalogEntry {
   lng: number | null;
   photo_path: string | null;
   rock_type: string | null;
+  /** Only set for identifications made before prompt rock-id-v2; not shown in the app. */
   formation_guess: string | null;
   confidence_score: number | null;
   confidence_tier: ConfidenceTier | null;

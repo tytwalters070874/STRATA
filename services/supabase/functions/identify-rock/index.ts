@@ -57,9 +57,10 @@ interface IdentifyRequest {
 /** A request whose image has been resolved to base64, ready for a provider. */
 type ReadyRequest = IdentifyRequest & { image_base64: string };
 
+// The photo identifies the rock type only; the formation comes from the map.
+// The model is not asked for a formation (prompt rock-id-v2 onward).
 interface ModelResult {
   rock_type: string;
-  formation_guess: string | null;
   confidence: number;
   reasoning: string;
   minerals_visible: string[];
@@ -91,17 +92,17 @@ interface ProviderOutcome {
 }
 
 // Shared by both providers. Both require every property listed in `required`
-// and `additionalProperties: false`; nullable fields use anyOf.
+// and `additionalProperties: false`. With no formation property here, the
+// model cannot return a formation even if a prompt row asks for one.
 const RESULT_SCHEMA = {
   type: "object",
   properties: {
     rock_type: { type: "string" },
-    formation_guess: { anyOf: [{ type: "string" }, { type: "null" }] },
     confidence: { type: "number", description: "Probability from 0 to 1 that rock_type is correct." },
     reasoning: { type: "string" },
     minerals_visible: { type: "array", items: { type: "string" } },
   },
-  required: ["rock_type", "formation_guess", "confidence", "reasoning", "minerals_visible"],
+  required: ["rock_type", "confidence", "reasoning", "minerals_visible"],
   additionalProperties: false,
 } as const;
 
@@ -136,7 +137,6 @@ function parseModelResult(text: string): ModelResult {
   const data = JSON.parse(text);
   const valid =
     typeof data?.rock_type === "string" &&
-    (data.formation_guess === null || typeof data.formation_guess === "string") &&
     typeof data.confidence === "number" &&
     Number.isFinite(data.confidence) &&
     typeof data.reasoning === "string" &&
@@ -146,7 +146,6 @@ function parseModelResult(text: string): ModelResult {
 
   return {
     rock_type: data.rock_type.trim(),
-    formation_guess: data.formation_guess?.trim() || null,
     confidence: Math.min(1, Math.max(0, data.confidence)),
     reasoning: data.reasoning.trim(),
     // Duplicates would make the app render two chips with the same React key.
@@ -566,7 +565,9 @@ Deno.serve(async (request) => {
   return json({
     identification_id: updateError ? null : pending.id,
     rock_type: outcome.result.rock_type,
-    formation_guess: outcome.result.formation_guess,
+    // Always null now. Kept so app builds that still read the field get a
+    // value of the type they expect.
+    formation_guess: null,
     confidence: outcome.result.confidence,
     confidence_tier: tier,
     reasoning: outcome.result.reasoning,
