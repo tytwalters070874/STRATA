@@ -13,6 +13,11 @@ export interface IdentificationResult {
   confidence_tier: ConfidenceTier;
   reasoning: string;
   minerals_visible: string[];
+  /**
+   * Up to three other plausible rock types, most likely first (prompt
+   * rock-id-v3). Absent from responses made before v3.
+   */
+  alternates?: { rock_type: string; confidence: number }[];
   mapped_formation: {
     id: string;
     name: string;

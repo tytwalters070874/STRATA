@@ -1,19 +1,29 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+// PRD 3.3: teal for a strong match, amber for likely, coral for possible.
 export const CONFIDENCE_COLORS = {
-  high: '#2e9e5b',
+  high: '#1f8a87',
   moderate: '#d9a21b',
   low: '#d4453a',
 } as const;
 
-const LABELS = {
-  high: 'High confidence',
-  moderate: 'Moderate confidence',
-  low: 'Low confidence',
-} as const;
+type Level = keyof typeof CONFIDENCE_COLORS;
+
+const LABELS: Record<Level, string> = {
+  high: 'Strong match',
+  moderate: 'Likely match',
+  low: 'Possible match',
+};
+
+// PRD 3.3 wording, reworded for rock type: the photo no longer names a formation.
+const EXPLANATIONS: Record<Level, string> = {
+  high: 'This identification is well supported by the photo and location data.',
+  moderate: 'The photo and location suggest this rock type, but a closer look in the field is recommended.',
+  low: 'Limited visual evidence. This is the most likely rock type here, but others are plausible.',
+};
 
 // Same thresholds the identify-rock function uses for confidence_tier.
-export function confidenceLevel(confidence: number): keyof typeof CONFIDENCE_COLORS {
+export function confidenceLevel(confidence: number): Level {
   if (confidence >= 0.8) return 'high';
   if (confidence >= 0.5) return 'moderate';
   return 'low';
@@ -22,9 +32,11 @@ export function confidenceLevel(confidence: number): keyof typeof CONFIDENCE_COL
 interface ConfidenceMeterProps {
   /** 0–1 */
   confidence: number;
+  /** Show the one-sentence explanation of the tier. Off for compact lists. */
+  explain?: boolean;
 }
 
-export default function ConfidenceMeter({ confidence }: ConfidenceMeterProps) {
+export default function ConfidenceMeter({ confidence, explain = true }: ConfidenceMeterProps) {
   const clamped = Math.min(1, Math.max(0, confidence));
   const percent = Math.round(clamped * 100);
   const level = confidenceLevel(clamped);
@@ -35,7 +47,7 @@ export default function ConfidenceMeter({ confidence }: ConfidenceMeterProps) {
       style={styles.container}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={LABELS[level]}
+      accessibilityLabel={`${LABELS[level]}. ${explain ? EXPLANATIONS[level] : ''}`}
       accessibilityValue={{ min: 0, max: 100, now: percent, text: `${percent}%` }}
     >
       <View style={styles.labelRow}>
@@ -48,6 +60,7 @@ export default function ConfidenceMeter({ confidence }: ConfidenceMeterProps) {
         <View style={[styles.tick, { left: '50%' }]} />
         <View style={[styles.tick, { left: '80%' }]} />
       </View>
+      {explain && <Text style={styles.explanation}>{EXPLANATIONS[level]}</Text>}
     </View>
   );
 }
@@ -88,5 +101,10 @@ const styles = StyleSheet.create({
     width: 2,
     marginLeft: -1,
     backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  explanation: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4a463e',
   },
 });

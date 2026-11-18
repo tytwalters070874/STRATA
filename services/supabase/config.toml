@@ -426,3 +426,8 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# One-off job: checks its own SUMMARY_JOB_TOKEN header instead of a user
+# sign-in, and refuses every request when that secret is unset.
+[functions.generate-summaries]
+verify_jwt = false

@@ -2,6 +2,8 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ConfidenceMeter from '../components/ConfidenceMeter';
+import GlossaryText from '../components/GlossaryText';
+import { define } from '../data/glossary';
 import { useSaveToCatalog } from '../hooks/useSaveToCatalog';
 import type { RootStackScreenProps } from '../navigation/types';
 
@@ -17,6 +19,11 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
   // catalog entry can reference it when saved.
   const mapped = result.mapped_formation;
   const canSave = result.identification_id != null && !isNotRock;
+  const alternates = result.alternates ?? [];
+  // "arkosic sandstone" → the glossary entry for the whole name, else its last word.
+  const rockDefinition = isNotRock
+    ? null
+    : define(result.rock_type) ?? define(result.rock_type.split(/\s+/).pop() ?? '');
 
   return (
     <View style={styles.screen}>
@@ -36,6 +43,7 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
           ) : (
             <>
               <Text style={[styles.rockType, styles.capitalize]}>{result.rock_type}</Text>
+              {rockDefinition && <Text style={styles.definition}>{rockDefinition}</Text>}
               <ConfidenceMeter confidence={result.confidence} />
               {isLowConfidence && (
                 <Text style={styles.hint}>
@@ -61,12 +69,30 @@ export default function ResultsScreen({ navigation, route }: RootStackScreenProp
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Why</Text>
-          <Text style={styles.body}>{result.reasoning}</Text>
+          <GlossaryText style={styles.body}>{result.reasoning}</GlossaryText>
         </View>
+
+        {!isNotRock && alternates.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Other possibilities</Text>
+            {alternates.map((alt) => (
+              <View key={alt.rock_type} style={styles.alternateRow}>
+                <GlossaryText style={[styles.alternateName, styles.capitalize]}>{alt.rock_type}</GlossaryText>
+                <Text style={styles.alternateScore}>{Math.round(alt.confidence * 100)}%</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {result.ai_provider === 'openai' && (
           <Text style={styles.meta}>Identified by the backup model ({result.model}).</Text>
         )}
+
+        {/* PRD 3.3: always shown, not dismissible. */}
+        <Text style={styles.disclaimer}>
+          AI identification is a field aid, not a scientific determination. Results should be verified
+          against official geologic survey records.
+        </Text>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -187,6 +213,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8a857a',
     textAlign: 'center',
+  },
+  definition: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4a463e',
+  },
+  alternateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    minHeight: 32,
+  },
+  alternateName: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1d1b16',
+  },
+  alternateScore: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4a463e',
+    fontVariant: ['tabular-nums'],
+  },
+  disclaimer: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#6b665c',
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   footer: {
     paddingHorizontal: 16,

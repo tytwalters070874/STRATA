@@ -8,11 +8,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import FormationDetails from '../components/FormationDetails';
 import { useAuth } from '../lib/auth';
+import { useTour } from '../lib/tour';
 import { useCurrentPosition, type PermissionState } from '../hooks/useCurrentPosition';
 import { useFormation, type Formation } from '../hooks/useFormation';
 import { useFormationAt } from '../hooks/useFormationAt';
@@ -33,6 +34,8 @@ const FIX_ZOOM = 13;
 // Included in the map's bottom padding so Google's logo, which must stay
 // visible, sits above them instead of underneath.
 const BUTTON_ROW_HEIGHT = 64;
+// Macrostrat's geologic map tiles (512 px, CC BY 4.0).
+const GEOLOGY_TILES = 'https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png';
 
 function formatCoords(lat: number, lng: number): string {
   const ns = lat >= 0 ? 'N' : 'S';
@@ -79,6 +82,22 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
     recenter();
   };
 
+  // A nearby formation was chosen in the sheet: select that point and move
+  // the map to it, as if the user had tapped it.
+  const selectPoint = (point: { lat: number; lng: number }) => {
+    setTapped(point);
+    if (mapReady) {
+      mapRef.current?.animateCamera(
+        { center: { latitude: point.lat, longitude: point.lng }, zoom: FIX_ZOOM },
+        { duration: 500 },
+      );
+    }
+  };
+
+  const { show: showTour } = useTour();
+  // Macrostrat's geologic map colours over the base map (PRD 3.1 overlay).
+  const [showGeology, setShowGeology] = useState(true);
+
   // Zoom to the user once, on the first fix after the map has loaded; after
   // that they can pan freely.
   useEffect(() => {
@@ -111,10 +130,41 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
           const { latitude, longitude } = e.nativeEvent.coordinate;
           setTapped({ lat: latitude, lng: longitude });
         }}
-      />
+      >
+        {showGeology && (
+          <UrlTile
+            urlTemplate={GEOLOGY_TILES}
+            tileSize={512}
+            maximumZ={16}
+            opacity={0.45}
+            zIndex={1}
+          />
+        )}
+      </MapView>
 
       {/* Keeps map labels from running under the clock and status icons. */}
       <View pointerEvents="none" style={[styles.statusBarScrim, { height: insets.top }]} />
+
+      <View style={[styles.mapTools, { top: insets.top + 12 }]}>
+        <Pressable
+          onPress={showTour}
+          style={styles.toolButton}
+          accessibilityRole="button"
+          accessibilityLabel="How STRATA works"
+        >
+          <Text style={styles.toolIcon}>?</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setShowGeology((v) => !v)}
+          style={[styles.toolButton, showGeology && styles.toolButtonOn]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: showGeology }}
+          accessibilityLabel="Geologic map colours"
+        >
+          <Text style={[styles.toolIcon, showGeology && styles.toolIconOn]}>≋</Text>
+        </Pressable>
+        {showGeology && <Text style={styles.mapCredit}>Geologic map: Macrostrat (CC BY 4.0)</Text>}
+      </View>
 
       {position && (
         <Pressable
@@ -185,7 +235,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
                 <Text style={styles.body}>{tappedFormation.error.message}</Text>
               </>
             ) : tappedFormation.formation ? (
-              <FormationDetails formation={tappedFormation.formation} point={tapped} />
+              <FormationDetails formation={tappedFormation.formation} point={tapped} onSelectPoint={selectPoint} />
             ) : (
               <>
                 <Text style={styles.title}>No formation data here</Text>
@@ -202,6 +252,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
               accuracyM={position?.coords.accuracy ?? null}
               formation={formation}
               point={formationPoint}
+              onSelectPoint={selectPoint}
               isLoading={isLoading}
               error={error}
             />
@@ -220,11 +271,22 @@ interface SheetContentProps {
   formation: Formation | null;
   /** The point the GPS formation was looked up at. */
   point: { lat: number; lng: number } | null;
+  onSelectPoint: (point: { lat: number; lng: number }) => void;
   isLoading: boolean;
   error: Error | null;
 }
 
-function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, point, isLoading, error }: SheetContentProps) {
+function SheetContent({
+  permission,
+  gpsError,
+  hasFix,
+  accuracyM,
+  formation,
+  point,
+  onSelectPoint,
+  isLoading,
+  error,
+}: SheetContentProps) {
   if (permission === 'denied') {
     return (
       <>
@@ -278,7 +340,7 @@ function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, poin
   return (
     <>
       {point ? (
-        <FormationDetails formation={formation} point={point} />
+        <FormationDetails formation={formation} point={point} onSelectPoint={onSelectPoint} />
       ) : null}
       {accuracyM != null && (
         <Text style={styles.meta}>GPS accuracy ±{Math.round(accuracyM)} m</Text>
@@ -290,6 +352,45 @@ function SheetContent({ permission, gpsError, hasFix, accuracyM, formation, poin
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  mapTools: {
+    position: 'absolute',
+    left: 16,
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  toolButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  toolButtonOn: {
+    backgroundColor: '#6b4f2a',
+  },
+  toolIcon: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#6b4f2a',
+  },
+  toolIconOn: {
+    color: '#fff',
+  },
+  mapCredit: {
+    fontSize: 10,
+    color: '#3a372f',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   statusBarScrim: {
     position: 'absolute',
