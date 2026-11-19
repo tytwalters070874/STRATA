@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { colors, fonts } from '../theme';
+
 // PRD 3.3: teal for a strong match, amber for likely, coral for possible.
 export const CONFIDENCE_COLORS = {
   high: '#1f8a87',
@@ -75,24 +77,27 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   level: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.labelBold,
+    fontSize: 16,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   percent: {
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#4a463e',
+    color: colors.inkSoft,
     fontVariant: ['tabular-nums'],
   },
   track: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ebe8e2',
+    height: 12,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    backgroundColor: colors.paper,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: 5,
   },
   tick: {
     position: 'absolute',
@@ -100,11 +105,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 2,
     marginLeft: -1,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: colors.ink,
   },
   explanation: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#4a463e',
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.inkSoft,
   },
 });

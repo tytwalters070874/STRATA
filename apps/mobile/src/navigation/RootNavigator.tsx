@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
 import { useTour } from '../lib/tour';
+import { colors, fonts } from '../theme';
 import AccountScreen from '../screens/AccountScreen';
 import CameraScreen from '../screens/CameraScreen';
 import CatalogScreen from '../screens/CatalogScreen';
@@ -14,6 +15,15 @@ import TourScreen from '../screens/TourScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Headers sit on the same paper as the screens, titled in the reading serif.
+const SCREEN_OPTIONS = {
+  headerStyle: { backgroundColor: colors.paper },
+  headerShadowVisible: false,
+  headerTintColor: colors.ink,
+  headerTitleStyle: { fontFamily: fonts.serifSemiBold, fontSize: 20 },
+  contentStyle: { backgroundColor: colors.paper },
+} as const;
 
 /**
  * Gate: a person who has neither signed in nor chosen guest mode sees the
@@ -32,7 +42,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Map">
+      <Stack.Navigator initialRouteName="Map" screenOptions={SCREEN_OPTIONS}>
         <Stack.Screen name="Map" component={LocationScreen} options={{ headerShown: false }} />
         {isSignedIn && (
           <>
@@ -70,11 +80,11 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   blank: {
     flex: 1,
-    backgroundColor: '#f6f4f0',
+    backgroundColor: colors.paper,
   },
   headerLink: {
-    color: '#6b4f2a',
+    fontFamily: fonts.sansSemiBold,
+    color: colors.accent,
     fontSize: 16,
-    fontWeight: '600',
   },
 });

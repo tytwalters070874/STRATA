@@ -8,25 +8,17 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StrataIllustration } from '../components/Lithology';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { colors, fonts } from '../theme';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// The hero is a stratigraphic column: bands of earth tones, stacked like rock
-// layers, drawn with plain Views so the page needs no extra dependency.
-const BANDS = [
-  { color: '#4f6b6a', height: 26 },
-  { color: '#d9c39a', height: 40 },
-  { color: '#8c6a3f', height: 22 },
-  { color: '#b9965f', height: 48 },
-  { color: '#6b4f2a', height: 34 },
-  { color: '#c9b08a', height: 30 },
-];
 
 type Stage = 'start' | 'email' | 'code';
 
@@ -36,6 +28,7 @@ type Stage = 'start' | 'email' | 'code';
  */
 export default function LandingScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { enterGuestMode } = useAuth();
 
   const [stage, setStage] = useState<Stage>('start');
@@ -77,64 +70,70 @@ export default function LandingScreen() {
     });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 },
-        ]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.column} accessibilityElementsHidden importantForAccessibility="no">
-          {BANDS.map((band) => (
-            <View key={band.color} style={[styles.band, { backgroundColor: band.color, height: band.height }]} />
-          ))}
+        <View style={styles.masthead}>
+          <Text style={styles.wordmark} accessibilityRole="header">
+            STRATA
+          </Text>
+          <Text style={styles.kicker}>A field guide to Montana &amp; Wyoming geology</Text>
         </View>
 
-        <Text style={styles.wordmark} accessibilityRole="header">
-          STRATA
-        </Text>
-        <Text style={styles.tagline}>Know the ground beneath you.</Text>
-        <Text style={styles.region}>Montana · Wyoming field geology</Text>
+        {stage === 'start' && (
+          <View style={styles.figure} accessible accessibilityLabel="Illustration of rock layers, oldest at the bottom">
+            <StrataIllustration width={Math.min(width - 48, 420)} />
+            <Text style={styles.caption}>Rock layers stack up through time: the oldest lie at the bottom.</Text>
+          </View>
+        )}
+
+        <View style={styles.intro}>
+          <Text style={styles.headline}>Know the ground beneath you.</Text>
+          {stage === 'start' && (
+            <Text style={styles.body}>
+              Tap anywhere on the map to read the rock under that spot: what it is, how it formed, and how long
+              ago.
+            </Text>
+          )}
+        </View>
 
         <View style={styles.actions}>
           {stage === 'start' && (
             <>
-              <Pressable style={styles.primaryButton} onPress={() => setStage('email')} accessibilityRole="button">
-                <Text style={styles.primaryButtonText}>Sign in</Text>
-              </Pressable>
               <Pressable
-                style={styles.secondaryButton}
-                onPress={enterGuestMode}
+                style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryPressed]}
+                onPress={() => setStage('email')}
                 accessibilityRole="button"
               >
+                <Text style={styles.primaryButtonText}>Sign in</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryButton} onPress={enterGuestMode} accessibilityRole="button">
                 <Text style={styles.secondaryButtonText}>Continue without signing in</Text>
               </Pressable>
               <Text style={styles.note}>
-                Without an account you can look up the formation under any point on the map. Identifying
-                rocks and saving a catalog need an account.
+                Without an account you can explore the map. Identifying rocks and saving a catalog need an account.
               </Text>
             </>
           )}
 
           {stage === 'email' && (
             <>
-              <Text style={styles.prompt}>Sign in with your email. We'll send you a sign-in code.</Text>
+              <Text style={styles.prompt}>Sign in with your email. We&apos;ll send you a sign-in code.</Text>
               <TextInput
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor="#a8a296"
+                placeholderTextColor={colors.muted}
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 editable={!busy}
                 onSubmitEditing={sendCode}
+                accessibilityLabel="Email address"
               />
               <Pressable
                 style={[styles.primaryButton, busy && styles.disabled]}
@@ -158,12 +157,13 @@ export default function LandingScreen() {
                 value={code}
                 onChangeText={setCode}
                 placeholder="Code from the email"
-                placeholderTextColor="#a8a296"
+                placeholderTextColor={colors.muted}
                 autoComplete="one-time-code"
                 keyboardType="number-pad"
                 textContentType="oneTimeCode"
                 editable={!busy}
                 onSubmitEditing={verifyCode}
+                accessibilityLabel="Sign-in code"
               />
               <Pressable
                 style={[styles.primaryButton, busy && styles.disabled]}
@@ -197,89 +197,111 @@ export default function LandingScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f6f4f0',
+    backgroundColor: colors.paper,
   },
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    gap: 10,
+    gap: 20,
   },
-  column: {
-    alignSelf: 'stretch',
-    height: 200,
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  band: {
-    width: '100%',
+  masthead: {
+    gap: 6,
   },
   wordmark: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: 8,
-    color: '#1d1b16',
+    fontFamily: fonts.labelBold,
+    fontSize: 46,
+    lineHeight: 50,
+    letterSpacing: 11,
+    color: colors.ink,
   },
-  tagline: {
-    fontSize: 18,
-    color: '#4a463e',
-  },
-  region: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.5,
+  kicker: {
+    fontFamily: fonts.label,
+    fontSize: 13,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: '#8a857a',
+    color: colors.muted,
+  },
+  figure: {
+    gap: 8,
+    alignItems: 'center',
+  },
+  caption: {
+    alignSelf: 'stretch',
+    fontFamily: fonts.serifItalic,
+    fontSize: 13,
+    color: colors.muted,
+  },
+  intro: {
+    gap: 8,
+  },
+  headline: {
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 28,
+    lineHeight: 33,
+    color: colors.ink,
+  },
+  body: {
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.inkSoft,
   },
   actions: {
-    marginTop: 28,
+    marginTop: 'auto',
     gap: 12,
   },
   primaryButton: {
     height: 52,
-    borderRadius: 12,
-    backgroundColor: '#6b4f2a',
+    borderRadius: 10,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  primaryPressed: {
+    backgroundColor: colors.accentPressed,
+  },
   primaryButtonText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 17,
+    letterSpacing: 0.3,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   secondaryButton: {
     height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#c9c2b4',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryButtonText: {
-    color: '#3a372f',
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 17,
+    color: colors.ink,
   },
   note: {
+    fontFamily: fonts.serif,
     fontSize: 13,
     lineHeight: 19,
-    color: '#6b665c',
+    color: colors.muted,
     textAlign: 'center',
   },
   prompt: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: '#4a463e',
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.inkSoft,
   },
   input: {
     height: 52,
     borderWidth: 1,
-    borderColor: '#ddd8ce',
-    borderRadius: 12,
+    borderColor: colors.ink,
+    borderRadius: 10,
     paddingHorizontal: 14,
+    fontFamily: fonts.sans,
     fontSize: 16,
-    color: '#1d1b16',
-    backgroundColor: '#fbfaf8',
+    color: colors.ink,
+    backgroundColor: colors.card,
   },
   linkRow: {
     alignSelf: 'center',
@@ -287,16 +309,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkText: {
-    color: '#6b4f2a',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
+    color: colors.accent,
   },
   disabled: {
     opacity: 0.45,
   },
   error: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#d4453a',
+    color: colors.danger,
     textAlign: 'center',
   },
 });

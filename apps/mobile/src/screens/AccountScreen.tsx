@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import type { RootStackScreenProps } from '../navigation/types';
+import { colors, fonts, labelStyle } from '../theme';
 
 /**
  * Two ways to attach an email, both confirmed with a one-time code (no deep
@@ -300,47 +301,48 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f6f4f0',
+    backgroundColor: colors.paper,
   },
   content: {
     padding: 16,
     gap: 12,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 12,
     padding: 16,
     gap: 10,
   },
   sectionTitle: {
+    ...labelStyle,
     fontSize: 13,
-    fontWeight: '700',
-    color: '#8a857a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 22,
+    color: colors.ink,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: '#4a463e',
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.inkSoft,
   },
   actions: {
     gap: 10,
   },
   input: {
-    height: 48,
+    height: 50,
     borderWidth: 1,
-    borderColor: '#ddd8ce',
+    borderColor: colors.ink,
     borderRadius: 10,
     paddingHorizontal: 12,
+    fontFamily: fonts.sans,
     fontSize: 16,
-    color: '#1d1b16',
-    backgroundColor: '#fbfaf8',
+    color: colors.ink,
+    backgroundColor: colors.paper,
   },
   row: {
     flexDirection: 'row',
@@ -348,54 +350,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   primaryButton: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#6b4f2a',
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
   },
   secondaryButton: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#c9c2b4',
+    height: 50,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryButtonText: {
-    color: '#3a372f',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 16,
-    fontWeight: '600',
+    color: colors.ink,
   },
   smallButton: {
     minWidth: 110,
-    height: 40,
+    height: 44,
     paddingHorizontal: 16,
     borderRadius: 10,
-    backgroundColor: '#6b4f2a',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   linkText: {
-    color: '#6b4f2a',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
+    color: colors.accent,
   },
   destructiveText: {
-    color: '#d4453a',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 16,
-    fontWeight: '600',
+    color: colors.danger,
   },
   disabled: {
     opacity: 0.45,
   },
   error: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#d4453a',
+    color: colors.danger,
   },
 });

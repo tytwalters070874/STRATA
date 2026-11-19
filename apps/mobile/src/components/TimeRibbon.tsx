@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatAgo, placeInTime, RIBBON_SEGMENTS } from '../data/geologicTime';
+import { colors, fonts } from '../theme';
 
 interface TimeRibbonProps {
   /** Youngest age of the rock, in millions of years ago. */
@@ -46,7 +47,7 @@ export default function TimeRibbon({ minMa, maxMa }: TimeRibbonProps) {
       <Text style={styles.headline}>Formed about {formatAgo(middle)}</Text>
       <View style={styles.ribbon}>
         {RIBBON_SEGMENTS.map((seg, i) => (
-          <View key={seg.name} style={[styles.segment, { flex: SHARES[i], backgroundColor: seg.color }]} />
+          <View key={seg.name} style={[styles.segment, { flex: SHARES[i], backgroundColor: seg.color }, i > 0 && styles.segmentDivider]} />
         ))}
         <View
           style={[
@@ -63,7 +64,7 @@ export default function TimeRibbon({ minMa, maxMa }: TimeRibbonProps) {
         ))}
       </View>
       {placed && <Text style={styles.placed}>{placed}</Text>}
-      <Text style={styles.scaleNote}>Earth's history, eras not to scale</Text>
+      <Text style={styles.scaleNote}>Earth&apos;s history, eras not to scale</Text>
     </View>
   );
 }
@@ -73,41 +74,51 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   headline: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 16,
+    color: colors.ink,
   },
   ribbon: {
     flexDirection: 'row',
-    height: 14,
-    borderRadius: 7,
+    height: 16,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.ink,
     overflow: 'hidden',
   },
   segment: {
     height: '100%',
   },
+  segmentDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: colors.ink,
+  },
   marker: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    backgroundColor: '#1d1b16',
-    borderRadius: 2,
+    backgroundColor: colors.ink,
   },
   labels: {
     flexDirection: 'row',
   },
   label: {
-    fontSize: 11,
-    color: '#6b665c',
+    fontFamily: fonts.label,
+    fontSize: 12,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.inkSoft,
     textAlign: 'center',
   },
   placed: {
+    fontFamily: fonts.serif,
     fontSize: 14,
     lineHeight: 20,
-    color: '#4a463e',
+    color: colors.inkSoft,
   },
   scaleNote: {
-    fontSize: 11,
-    color: '#8a857a',
+    fontFamily: fonts.serifItalic,
+    fontSize: 12,
+    color: colors.muted,
   },
 });

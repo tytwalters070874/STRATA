@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, type StyleProp, type TextStyle } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { define, GLOSSARY_PATTERN } from '../data/glossary';
+import { colors, fonts } from '../theme';
 
 interface GlossaryTextProps {
   children: string;
@@ -66,33 +67,37 @@ export default function GlossaryText({ children, style, numberOfLines }: Glossar
 }
 
 const styles = StyleSheet.create({
+  // Android draws every underline solid; the dotted style shows on iOS.
   term: {
     textDecorationLine: 'underline',
     textDecorationStyle: 'dotted',
-    textDecorationColor: '#6b4f2a',
+    textDecorationColor: colors.accent,
   },
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(30,27,22,0.35)',
     paddingHorizontal: 16,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    borderRadius: 14,
     padding: 20,
     gap: 8,
   },
   cardTerm: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 22,
+    color: colors.ink,
     textTransform: 'capitalize',
   },
   cardBody: {
+    fontFamily: fonts.serif,
     fontSize: 16,
-    lineHeight: 23,
-    color: '#3a372f',
+    lineHeight: 24,
+    color: colors.inkSoft,
   },
   close: {
     alignSelf: 'flex-end',
@@ -100,8 +105,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: {
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#6b4f2a',
+    color: colors.accent,
   },
 });
