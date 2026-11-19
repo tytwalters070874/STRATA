@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import Svg, { Circle, Defs, Line, Path, Pattern, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Line, Path, Pattern, Rect, Text as SvgText } from 'react-native-svg';
 
 import { colors } from '../theme';
 
@@ -136,7 +136,7 @@ export function LithologyPanel({ kind, width, height }: { kind: Lithology; width
       <Defs>
         <PatternDef id={id} kind={kind} />
       </Defs>
-      <Rect x={0.5} y={0.5} width={width - 1} height={height - 1} rx={14} fill={`url(#${id})`} stroke={colors.ink} />
+      <Rect x={1} y={1} width={width - 2} height={height - 2} rx={14} fill={`url(#${id})`} stroke={colors.ink} />
     </Svg>
   );
 }
@@ -156,34 +156,47 @@ const STRATA: { kind: Lithology; top: string; label: string; labelX: number; lab
  */
 export function StrataIllustration({ width = 342 }: { width?: number }) {
   const prefix = `st-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const height = (width * 252) / 342;
+  const drawnWidth = Math.floor(width);
+  const height = Math.floor((drawnWidth * 252) / 342);
+  const clipId = `${prefix}-frame`;
+  const label = (layer: (typeof STRATA)[number], halo: boolean) => (
+    <SvgText
+      key={`${halo ? 'halo' : 'label'}-${layer.kind}`}
+      x={layer.labelX}
+      y={layer.labelY}
+      fontFamily="BarlowCondensed_600SemiBold"
+      fontSize={11}
+      letterSpacing={0.6}
+      fill={colors.ink}
+      // A paper-coloured outline drawn underneath keeps the label readable
+      // over the busy patterns.
+      {...(halo ? { stroke: colors.card, strokeWidth: 3.5, strokeLinejoin: 'round' as const } : {})}
+    >
+      {layer.label}
+    </SvgText>
+  );
   return (
-    <Svg width={width} height={height} viewBox="0 0 342 252">
+    <Svg width={drawnWidth} height={height} viewBox="0 0 342 252">
       <Defs>
         {STRATA.map((layer) => (
           <PatternDef key={layer.kind} id={`${prefix}-${layer.kind}`} kind={layer.kind} />
         ))}
+        {/* The layers are drawn with square corners; clip them to the frame. */}
+        <ClipPath id={clipId}>
+          <Rect x={0.5} y={0.5} width={341} height={251} rx={14} />
+        </ClipPath>
       </Defs>
-      <Rect x={0.5} y={0.5} width={341} height={251} rx={14} fill={colors.paper} />
-      {STRATA.map((layer) => (
-        <Path key={layer.kind} d={`${layer.top} L341 251 L1 251 Z`} fill={`url(#${prefix}-${layer.kind})`} />
-      ))}
-      {STRATA.map((layer, i) => (
-        <Path key={`line-${layer.kind}`} d={layer.top} fill="none" stroke={colors.ink} strokeWidth={i === 0 ? 1.6 : 0.8} />
-      ))}
-      {STRATA.map((layer) => (
-        <SvgText
-          key={`label-${layer.kind}`}
-          x={layer.labelX}
-          y={layer.labelY}
-          fontFamily="BarlowCondensed_600SemiBold"
-          fontSize={11}
-          letterSpacing={0.6}
-          fill={colors.ink}
-        >
-          {layer.label}
-        </SvgText>
-      ))}
+      <G clipPath={`url(#${clipId})`}>
+        <Rect x={0.5} y={0.5} width={341} height={251} rx={14} fill={colors.paper} />
+        {STRATA.map((layer) => (
+          <Path key={layer.kind} d={`${layer.top} L341 251 L1 251 Z`} fill={`url(#${prefix}-${layer.kind})`} />
+        ))}
+        {STRATA.map((layer, i) => (
+          <Path key={`line-${layer.kind}`} d={layer.top} fill="none" stroke={colors.ink} strokeWidth={i === 0 ? 1.6 : 0.8} />
+        ))}
+        {STRATA.map((layer) => label(layer, true))}
+        {STRATA.map((layer) => label(layer, false))}
+      </G>
       <Rect x={0.5} y={0.5} width={341} height={251} rx={14} fill="none" stroke={colors.ink} strokeWidth={1} />
     </Svg>
   );

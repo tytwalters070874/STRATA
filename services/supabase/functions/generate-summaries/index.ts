@@ -11,7 +11,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
-const PROMPT_VERSION = "summary-v1";
+const PROMPT_VERSION = "summary-v2";
 const DEFAULT_MODEL = "claude-sonnet-5-5";
 const MAX_BATCH = 25;
 const CONCURRENCY = 5;
@@ -26,7 +26,8 @@ Write:
 
 Rules:
 - Use only the facts given: the formation name, rock types, rock class, and the Macrostrat description, age and environment. You may add widely known general geology about those rock types. Do not invent fossils, places, thicknesses or events the facts do not support.
-- The Macrostrat unit comes from a different map and can describe a different rock. If it clearly does not match the formation's rock types, rely on the rock types.
+- The Macrostrat unit comes from a different map and can describe a different rock. If it clearly does not match the formation's rock types, ignore its description and age entirely and rely on the rock types.
+- Write only about the rock. Never mention Macrostrat, maps, sources, data, matching, or which facts you used or set aside: readers see only the summary.
 - If the facts are thin, stay general rather than guessing.
 - Give ages in plain words ("about 50 million years ago"), never "Ma".
 - No headings, lists or exclamation marks.`;

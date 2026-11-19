@@ -42,7 +42,9 @@ export default function TourScreen() {
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const current = STEPS[step];
-  const panelWidth = Math.min(width - 48, 420);
+  // Whole points: a fractional width rounds the SVG down a pixel and cuts off
+  // its right border.
+  const panelWidth = Math.floor(Math.min(width - 48, 420));
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>

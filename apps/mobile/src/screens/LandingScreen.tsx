@@ -52,7 +52,12 @@ export default function LandingScreen() {
   const sendCode = () =>
     run(async () => {
       const address = email.trim().toLowerCase();
-      if (!EMAIL_PATTERN.test(address)) throw new Error('Enter a valid email address');
+      if (!EMAIL_PATTERN.test(address)) {
+        // The comma sits next to the period on most phone keyboards.
+        throw new Error(
+          address.includes(',') ? 'Email addresses use a period, not a comma.' : 'Enter a valid email address',
+        );
+      }
       const { error: sendError } = await supabase.auth.signInWithOtp({ email: address });
       if (sendError) throw sendError;
       setEmail(address);
@@ -82,12 +87,14 @@ export default function LandingScreen() {
           <Text style={styles.kicker}>A field guide to Montana &amp; Wyoming geology</Text>
         </View>
 
-        {stage === 'start' && (
-          <View style={styles.figure} accessible accessibilityLabel="Illustration of rock layers, oldest at the bottom">
-            <StrataIllustration width={Math.min(width - 48, 420)} />
+        {/* Kept through sign-in so the form doesn't sit under an empty page;
+            shorter there so the field stays clear of the keyboard. */}
+        <View style={styles.figure} accessible accessibilityLabel="Illustration of rock layers, oldest at the bottom">
+          <StrataIllustration width={Math.min(width - 48, stage === 'start' ? 420 : 280)} />
+          {stage === 'start' && (
             <Text style={styles.caption}>Rock layers stack up through time: the oldest lie at the bottom.</Text>
-          </View>
-        )}
+          )}
+        </View>
 
         <View style={styles.intro}>
           <Text style={styles.headline}>Know the ground beneath you.</Text>
@@ -122,9 +129,12 @@ export default function LandingScreen() {
             <>
               <Text style={styles.prompt}>Sign in with your email. We&apos;ll send you a sign-in code.</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, error != null && styles.inputError]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError(null);
+                }}
                 placeholder="you@example.com"
                 placeholderTextColor={colors.muted}
                 autoCapitalize="none"
@@ -135,6 +145,7 @@ export default function LandingScreen() {
                 onSubmitEditing={sendCode}
                 accessibilityLabel="Email address"
               />
+              <FieldError message={error} />
               <Pressable
                 style={[styles.primaryButton, busy && styles.disabled]}
                 onPress={sendCode}
@@ -153,9 +164,12 @@ export default function LandingScreen() {
             <>
               <Text style={styles.prompt}>Enter the code we sent to {email}.</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, error != null && styles.inputError]}
                 value={code}
-                onChangeText={setCode}
+                onChangeText={(text) => {
+                  setCode(text);
+                  setError(null);
+                }}
                 placeholder="Code from the email"
                 placeholderTextColor={colors.muted}
                 autoComplete="one-time-code"
@@ -165,6 +179,7 @@ export default function LandingScreen() {
                 onSubmitEditing={verifyCode}
                 accessibilityLabel="Sign-in code"
               />
+              <FieldError message={error} />
               <Pressable
                 style={[styles.primaryButton, busy && styles.disabled]}
                 onPress={verifyCode}
@@ -187,10 +202,19 @@ export default function LandingScreen() {
             </>
           )}
 
-          {error && <Text style={styles.error}>{error}</Text>}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Shown right under the field it is about, and announced by screen readers. */
+function FieldError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+      {message}
+    </Text>
   );
 }
 
@@ -303,6 +327,10 @@ const styles = StyleSheet.create({
     color: colors.ink,
     backgroundColor: colors.card,
   },
+  inputError: {
+    borderColor: colors.danger,
+    borderWidth: 2,
+  },
   linkRow: {
     alignSelf: 'center',
     minHeight: 48,
@@ -317,9 +345,9 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   error: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 14,
     color: colors.danger,
-    textAlign: 'center',
+    marginTop: -4,
   },
 });

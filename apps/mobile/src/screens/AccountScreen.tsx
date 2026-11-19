@@ -88,7 +88,12 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
     run(async () => {
       if (!step) return;
       const address = email.trim().toLowerCase();
-      if (!EMAIL_PATTERN.test(address)) throw new Error('Enter a valid email address');
+      if (!EMAIL_PATTERN.test(address)) {
+        // The comma sits next to the period on most phone keyboards.
+        throw new Error(
+          address.includes(',') ? 'Email addresses use a period, not a comma.' : 'Enter a valid email address',
+        );
+      }
 
       const { error: sendError } =
         step.mode === 'link'
@@ -203,7 +208,8 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
               </>
             ) : (
               <Pressable style={styles.secondaryButton} onPress={confirmSignOut} disabled={busy}>
-                <Text style={styles.destructiveText}>Sign out</Text>
+                {/* Signing out loses nothing, so it is not styled as destructive. */}
+                <Text style={styles.secondaryButtonText}>Sign out</Text>
               </Pressable>
             )}
           </View>
@@ -223,7 +229,7 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
                   value={email}
                   onChangeText={setEmail}
                   placeholder="you@example.com"
-                  placeholderTextColor="#a8a296"
+                  placeholderTextColor={colors.muted}
                   autoCapitalize="none"
                   autoComplete="email"
                   keyboardType="email-address"
@@ -240,7 +246,7 @@ export default function AccountScreen({ navigation }: RootStackScreenProps<'Acco
                   value={code}
                   onChangeText={setCode}
                   placeholder="123456"
-                  placeholderTextColor="#a8a296"
+                  placeholderTextColor={colors.muted}
                   autoComplete="one-time-code"
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"

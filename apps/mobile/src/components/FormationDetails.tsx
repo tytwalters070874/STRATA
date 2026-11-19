@@ -8,6 +8,7 @@ import { useFormationSummary } from '../hooks/useFormationSummary';
 import { useMacrostratUnit } from '../hooks/useMacrostratUnit';
 import { compass, formatDistance, useNearbyFormations } from '../hooks/useNearbyFormations';
 import { useProtectedArea } from '../hooks/useProtectedArea';
+import { macrostratAgeFits } from '../lib/mapUnitAge';
 import { plainRockTypes, shortFormationName, splitFormationName } from '../lib/names';
 import { colors, fonts, labelStyle } from '../theme';
 import GlossaryText from './GlossaryText';
@@ -57,7 +58,13 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
   const { data: protectedAreas } = useProtectedArea(point);
   const nearby = useNearbyFormations(point);
   const macrostrat = useMacrostratUnit(point);
-  const unit = macrostrat.data ?? null;
+  // Macrostrat can match a different rock than the formation here; when its
+  // age contradicts the map unit's, none of its details are about this rock.
+  const unit =
+    macrostrat.data &&
+    (!macrostrat.data.ageMa || macrostratAgeFits(formation.map_unit_symbol, macrostrat.data.ageMa))
+      ? macrostrat.data
+      : null;
   const { title, parent } = splitFormationName(formation.name);
 
   const ageText = unit

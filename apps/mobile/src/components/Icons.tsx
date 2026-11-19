@@ -22,6 +22,15 @@ export function HelpIcon({ size = 22, color = colors.ink }: IconProps) {
   );
 }
 
+/** A cross: close this screen. */
+export function CloseIcon({ size = 22, color = colors.ink }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
+      <Path d="M6 6 L18 18 M18 6 L6 18" />
+    </Svg>
+  );
+}
+
 /** Stacked layers: the geologic map overlay. */
 export function LayersIcon({ size = 22, color = colors.ink }: IconProps) {
   return (
