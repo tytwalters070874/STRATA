@@ -15,7 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentPosition } from '../hooks/useCurrentPosition';
 import { useAuth } from '../lib/auth';
 import { identifyRock, type IdentifyStage } from '../lib/identifyRock';
+import { CloseIcon } from '../components/Icons';
 import type { RootStackScreenProps } from '../navigation/types';
+import { colors, fonts, labelStyle } from '../theme';
 
 const TIPS = [
   { title: 'Fill the frame', body: 'Get close so the rock fills the guide box.' },
@@ -54,7 +56,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
 
   if (!cameraPermission.granted) {
     return (
-      <View style={[styles.fill, styles.centered, { padding: 24 }]}>
+      <View style={[styles.permissionScreen, styles.centered, { padding: 24 }]}>
         <Text style={styles.permissionTitle}>Camera access needed</Text>
         <Text style={styles.permissionBody}>
           STRATA uses the camera to photograph rocks for identification.
@@ -69,7 +71,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
             {cameraPermission.canAskAgain ? 'Allow camera' : 'Open settings'}
           </Text>
         </Pressable>
-        <Pressable onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+        <Pressable onPress={() => navigation.goBack()} style={{ marginTop: 16, minHeight: 44, justifyContent: 'center' }}>
           <Text style={styles.linkText}>Back to map</Text>
         </Pressable>
       </View>
@@ -166,7 +168,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
       {/* Working / error overlay */}
       {capture.status === 'working' && (
         <View style={[StyleSheet.absoluteFill, styles.centered, styles.scrim]}>
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color={colors.card} />
           <Text style={styles.stageText}>{STAGE_LABEL[capture.stage]}</Text>
         </View>
       )}
@@ -191,7 +193,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
           accessibilityLabel="Close camera"
           disabled={isWorking}
         >
-          <Text style={styles.iconText}>✕</Text>
+          <CloseIcon />
         </Pressable>
         <GpsChip accuracyM={position?.coords.accuracy ?? null} />
         <Pressable
@@ -230,7 +232,7 @@ export default function CameraScreen({ navigation }: RootStackScreenProps<'Camer
 
 function GpsChip({ accuracyM }: { accuracyM: number | null }) {
   const label = accuracyM == null ? 'No GPS' : `GPS ±${Math.round(accuracyM)} m`;
-  const color = accuracyM == null ? '#e0453a' : accuracyM <= 25 ? '#2e9e5b' : '#d9a21b';
+  const color = accuracyM == null ? colors.danger : accuracyM <= 25 ? '#2e7d4f' : '#b8860b';
   return (
     <View style={styles.chip}>
       <View style={[styles.chipDot, { backgroundColor: color }]} />
@@ -265,18 +267,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
+  // The viewfinder stays dark so the photo reads true; controls and cards
+  // are the same paper and ink as the rest of the app.
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.card,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontFamily: fonts.serifSemiBold,
+    color: colors.ink,
+    fontSize: 22,
+    lineHeight: 26,
   },
   chip: {
     flexDirection: 'row',
@@ -285,7 +292,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.ink,
   },
   chipDot: {
     width: 8,
@@ -293,61 +302,69 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   chipText: {
-    color: '#fff',
+    fontFamily: fonts.sansSemiBold,
+    color: colors.ink,
     fontSize: 13,
   },
   tipsCard: {
     position: 'absolute',
     left: 16,
     right: 16,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(20,18,14,0.85)',
-    gap: 8,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    gap: 12,
   },
   tipsHeading: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    ...labelStyle,
   },
   tipRow: {
     gap: 2,
   },
   tipTitle: {
-    color: '#f3d9a4',
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.serifSemiBold,
+    color: colors.ink,
+    fontSize: 16,
   },
   tipBody: {
-    color: '#e8e4dc',
-    fontSize: 14,
+    fontFamily: fonts.serif,
+    color: colors.inkSoft,
+    fontSize: 15,
+    lineHeight: 21,
   },
   tipsDismiss: {
     alignSelf: 'flex-end',
     paddingTop: 4,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   linkText: {
-    color: '#f3d9a4',
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
+    color: colors.accent,
+    fontSize: 16,
   },
   scrim: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(30,27,22,0.8)',
     gap: 12,
   },
   stageText: {
-    color: '#fff',
-    fontSize: 16,
+    fontFamily: fonts.serif,
+    color: colors.card,
+    fontSize: 18,
   },
   errorTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.serifSemiBold,
+    color: colors.card,
+    fontSize: 22,
     textAlign: 'center',
   },
   errorBody: {
-    color: '#e8e4dc',
-    fontSize: 14,
+    fontFamily: fonts.serif,
+    color: colors.paper,
+    fontSize: 16,
+    lineHeight: 23,
     textAlign: 'center',
   },
   bottomBar: {
@@ -359,9 +376,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   blockerText: {
-    color: '#fff',
+    fontFamily: fonts.sansSemiBold,
+    color: colors.ink,
     fontSize: 14,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.card,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -385,27 +403,37 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: '#fff',
   },
+  // The permission screen is a page of the app, not a viewfinder.
+  permissionScreen: {
+    flex: 1,
+    backgroundColor: colors.paper,
+  },
   permissionTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
+    fontFamily: fonts.serifSemiBold,
+    color: colors.ink,
+    fontSize: 26,
     marginBottom: 8,
+    textAlign: 'center',
   },
   permissionBody: {
-    color: '#e8e4dc',
-    fontSize: 15,
+    fontFamily: fonts.serif,
+    color: colors.inkSoft,
+    fontSize: 17,
+    lineHeight: 25,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   primaryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    minHeight: 50,
+    paddingHorizontal: 28,
     borderRadius: 10,
-    backgroundColor: '#6b4f2a',
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
+    fontFamily: fonts.sansSemiBold,
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
   },
 });

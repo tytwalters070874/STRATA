@@ -12,8 +12,10 @@ import MapView, { PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import FormationDetails from '../components/FormationDetails';
+import { BookIcon, CameraIcon, HelpIcon, LayersIcon, LocateIcon } from '../components/Icons';
 import { useAuth } from '../lib/auth';
 import { useTour } from '../lib/tour';
+import { colors, fonts } from '../theme';
 import { useCurrentPosition, type PermissionState } from '../hooks/useCurrentPosition';
 import { useFormation, type Formation } from '../hooks/useFormation';
 import { useFormationAt } from '../hooks/useFormationAt';
@@ -152,7 +154,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
           accessibilityRole="button"
           accessibilityLabel="How STRATA works"
         >
-          <Text style={styles.toolIcon}>?</Text>
+          <HelpIcon />
         </Pressable>
         <Pressable
           onPress={() => setShowGeology((v) => !v)}
@@ -161,7 +163,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
           accessibilityState={{ checked: showGeology }}
           accessibilityLabel="Geologic map colours"
         >
-          <Text style={[styles.toolIcon, showGeology && styles.toolIconOn]}>≋</Text>
+          <LayersIcon color={showGeology ? '#fff' : colors.ink} />
         </Pressable>
         {showGeology && <Text style={styles.mapCredit}>Geologic map: Macrostrat (CC BY 4.0)</Text>}
       </View>
@@ -173,7 +175,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
           accessibilityRole="button"
           accessibilityLabel="Center map on my location"
         >
-          <Text style={styles.recenterIcon}>◎</Text>
+          <LocateIcon />
         </Pressable>
       )}
 
@@ -185,6 +187,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
             accessibilityRole="button"
             accessibilityLabel="My catalog"
           >
+            <BookIcon size={18} />
             <Text style={styles.catalogButtonText}>Catalog</Text>
           </Pressable>
 
@@ -194,6 +197,7 @@ export default function LocationScreen({ navigation }: RootStackScreenProps<'Map
             accessibilityRole="button"
             accessibilityLabel="Identify a rock"
           >
+            <CameraIcon size={20} />
             <Text style={styles.cameraButtonText}>Identify rock</Text>
           </Pressable>
         </>
@@ -349,6 +353,16 @@ function SheetContent({
   );
 }
 
+// Map controls are drawn like a field notebook: paper fill, a thin ink
+// outline, no drop shadows.
+const control = {
+  backgroundColor: colors.card,
+  borderWidth: 1,
+  borderColor: colors.ink,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -360,35 +374,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   toolButton: {
+    ...control,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
   },
   toolButtonOn: {
-    backgroundColor: '#6b4f2a',
-  },
-  toolIcon: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#6b4f2a',
-  },
-  toolIconOn: {
-    color: '#fff',
+    backgroundColor: colors.accent,
   },
   mapCredit: {
-    fontSize: 10,
-    color: '#3a372f',
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    fontFamily: fonts.sans,
+    fontSize: 11,
+    color: colors.ink,
+    backgroundColor: 'rgba(251,248,241,0.92)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -397,31 +397,30 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: 'rgba(244,239,228,0.8)',
   },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.ink,
+    paddingHorizontal: 24,
+    paddingTop: 10,
     gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 8,
   },
   handle: {
     alignSelf: 'center',
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#d0d0d0',
+    backgroundColor: '#c9bfae',
     marginBottom: 4,
   },
   row: {
@@ -447,104 +446,62 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   linkText: {
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#6b4f2a',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    color: colors.accent,
   },
   title: {
     flexShrink: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1d1b16',
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#efe6d8',
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b4f2a',
-  },
-  age: {
-    fontSize: 15,
-    color: '#4a463e',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 22,
+    color: colors.ink,
   },
   body: {
-    fontSize: 15,
-    color: '#4a463e',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#f2f0ec',
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#3a372f',
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.inkSoft,
   },
   meta: {
-    fontSize: 12,
-    color: '#8a857a',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.muted,
   },
   button: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#6b4f2a',
+    paddingHorizontal: 18,
+    minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.accent,
   },
   buttonText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 16,
     color: '#fff',
-    fontWeight: '600',
   },
   recenterButton: {
+    ...control,
     position: 'absolute',
     right: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
   },
   catalogButton: {
+    ...control,
     position: 'absolute',
     right: 16,
-    height: 40,
+    height: 44,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    borderRadius: 22,
+    flexDirection: 'row',
+    gap: 6,
   },
   catalogButtonText: {
-    color: '#6b4f2a',
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 16,
+    color: colors.ink,
   },
   cameraButton: {
     position: 'absolute',
@@ -552,22 +509,17 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: 18,
     borderRadius: 22,
-    backgroundColor: '#6b4f2a',
+    backgroundColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    gap: 8,
   },
   cameraButtonText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 16,
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  recenterIcon: {
-    fontSize: 22,
-    color: '#1a73e8',
   },
 });

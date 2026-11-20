@@ -63,12 +63,15 @@ export const MILESTONES: { age: number; event: string }[] = [
   { age: 0.3, event: 'modern humans appeared' },
 ];
 
-/** The four main divisions shown on the ribbon, oldest first. */
+/**
+ * The four main divisions shown on the ribbon, oldest first, in the standard
+ * colours geologic maps and time charts use for these eras (CGMW).
+ */
 export const RIBBON_SEGMENTS: { name: string; start: number; end: number; color: string }[] = [
-  { name: 'Precambrian', start: 4600, end: 539, color: '#c9b08a' },
-  { name: 'Paleozoic', start: 539, end: 252, color: '#8fa6a1' },
-  { name: 'Mesozoic', start: 252, end: 66, color: '#9fbf85' },
-  { name: 'Cenozoic', start: 66, end: 0, color: '#e8c96a' },
+  { name: 'Precambrian', start: 4600, end: 539, color: '#f74370' },
+  { name: 'Paleozoic', start: 539, end: 252, color: '#99c08d' },
+  { name: 'Mesozoic', start: 252, end: 66, color: '#67c5ca' },
+  { name: 'Cenozoic', start: 66, end: 0, color: '#f2f91d' },
 ];
 
 /**

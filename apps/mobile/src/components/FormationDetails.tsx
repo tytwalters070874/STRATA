@@ -8,7 +8,12 @@ import { useFormationSummary } from '../hooks/useFormationSummary';
 import { useMacrostratUnit } from '../hooks/useMacrostratUnit';
 import { compass, formatDistance, useNearbyFormations } from '../hooks/useNearbyFormations';
 import { useProtectedArea } from '../hooks/useProtectedArea';
+import { macrostratAgeFits } from '../lib/mapUnitAge';
+import { plainRockTypes, shortFormationName, splitFormationName } from '../lib/names';
+import { colors, fonts, labelStyle } from '../theme';
 import GlossaryText from './GlossaryText';
+import { BearingIcon, ChevronIcon, ShieldIcon } from './Icons';
+import { lithologyFor, LithologySwatch } from './Lithology';
 import TimeRibbon from './TimeRibbon';
 
 interface FormationDetailsProps {
@@ -24,10 +29,22 @@ function formatMa(value: number): string {
   return value < 10 ? value.toFixed(1) : String(Math.round(value));
 }
 
+/** A section heading set like a guidebook running head: small caps and a rule. */
+function SectionHead({ children }: { children: string }) {
+  return (
+    <View style={styles.sectionHead}>
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        {children}
+      </Text>
+      <View style={styles.sectionRule} />
+    </View>
+  );
+}
+
 /**
- * The formation under a map point, layered for a reader with no geology
- * background: a plain summary and how it formed come first, then rocks
- * nearby and photos, and the geologist's details last, collapsed.
+ * The formation under a map point, set like a field-guide page for a reader
+ * with no geology background: a plain summary and how it formed come first,
+ * then rocks nearby and photos, and the geologist's details last, collapsed.
  *
  * Sources: the formation table (name, map unit, rock types, and a rock class
  * in its geologic_age column); formation_summaries (AI-written plain text);
@@ -41,7 +58,14 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
   const { data: protectedAreas } = useProtectedArea(point);
   const nearby = useNearbyFormations(point);
   const macrostrat = useMacrostratUnit(point);
-  const unit = macrostrat.data ?? null;
+  // Macrostrat can match a different rock than the formation here; when its
+  // age contradicts the map unit's, none of its details are about this rock.
+  const unit =
+    macrostrat.data &&
+    (!macrostrat.data.ageMa || macrostratAgeFits(formation.map_unit_symbol, macrostrat.data.ageMa))
+      ? macrostrat.data
+      : null;
+  const { title, parent } = splitFormationName(formation.name);
 
   const ageText = unit
     ? [unit.period, unit.ageMa && `${formatMa(unit.ageMa.min)}–${formatMa(unit.ageMa.max)} Ma`]
@@ -68,37 +92,43 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
   return (
     <View style={styles.container}>
       {protectedAreas && protectedAreas.length > 0 && (
-        <View style={styles.notice} accessibilityRole="alert">
-          <Text style={styles.noticeTitle}>
-            {protectedAreas.map((area) => `${area.name} (${area.kind})`).join(' · ')}
-          </Text>
-          <Text style={styles.noticeBody}>
-            This is protected land. See the applicable agencies for collection rules. If in doubt, do not
-            collect.
-          </Text>
+        <View style={styles.notice} accessible accessibilityRole="alert">
+          <View style={styles.noticeIcon}>
+            <ShieldIcon />
+          </View>
+          <View style={styles.noticeText}>
+            <Text style={styles.noticeTitle}>
+              Protected land · {protectedAreas.map((area) => `${area.name} (${area.kind})`).join(' · ')}
+            </Text>
+            <Text style={styles.noticeBody}>
+              See the applicable agencies for collection rules. If in doubt, do not collect.
+            </Text>
+          </View>
         </View>
       )}
 
-      <View style={styles.titleRow}>
-        <Text style={styles.title} numberOfLines={2}>
-          {formation.name}
-        </Text>
-        {formation.map_unit_symbol && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{formation.map_unit_symbol}</Text>
-          </View>
-        )}
+      <View style={styles.header}>
+        {parent && <Text style={styles.parent}>{parent}</Text>}
+        <View style={styles.titleRow}>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
+          {formation.map_unit_symbol && (
+            <View style={styles.unitTag} accessibilityLabel={`Map unit ${formation.map_unit_symbol}`}>
+              <Text style={styles.unitTagText}>{formation.map_unit_symbol}</Text>
+            </View>
+          )}
+        </View>
+        <Pressable
+          onPress={openSource}
+          accessibilityRole="link"
+          accessibilityLabel={`View source for ${formation.name}`}
+          hitSlop={8}
+          style={styles.sourceButton}
+        >
+          <Text style={styles.sourceText}>View source ›</Text>
+        </Pressable>
       </View>
-
-      <Pressable
-        onPress={openSource}
-        accessibilityRole="link"
-        accessibilityLabel={`View source for ${formation.name}`}
-        hitSlop={8}
-        style={styles.sourceButton}
-      >
-        <Text style={styles.sourceText}>View source ›</Text>
-      </Pressable>
 
       {/* 1. What you're standing on */}
       {summary ? (
@@ -113,7 +143,7 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
       {/* 2. How it formed */}
       {(summary?.how_it_formed || (unit && unit.environments.length > 0) || unit?.ageMa) && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How it formed</Text>
+          <SectionHead>How it formed</SectionHead>
           {summary?.how_it_formed ? (
             <GlossaryText style={styles.body}>{summary.how_it_formed}</GlossaryText>
           ) : unit && unit.environments.length > 0 ? (
@@ -125,49 +155,56 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
 
       {/* 3. Rocks nearby */}
       {nearby.data && nearby.data.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rocks nearby</Text>
-          {nearby.data.map((item) => (
-            <Pressable
-              key={item.name}
-              style={styles.nearbyRow}
-              onPress={() => onSelectPoint?.({ lat: item.edge_lat, lng: item.edge_lng })}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.name}, ${formatDistance(item.distance_m)} ${compass(item.bearing_deg)}`}
-            >
-              <View style={styles.nearbyText}>
-                <Text style={styles.nearbyRocks} numberOfLines={1}>
-                  {item.rock_types?.length ? item.rock_types.join(', ') : 'Rock'}
-                </Text>
-                <Text style={styles.nearbyName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-              </View>
-              <Text style={styles.nearbyDistance}>
-                {formatDistance(item.distance_m)} {compass(item.bearing_deg)}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.sectionTight}>
+          <SectionHead>Rocks nearby</SectionHead>
+          {nearby.data.map((item) => {
+            const rocks = plainRockTypes(item.rock_types);
+            const name = shortFormationName(item.name);
+            const where = `${formatDistance(item.distance_m)} ${compass(item.bearing_deg)}`;
+            return (
+              <Pressable
+                key={item.name}
+                style={({ pressed }) => [styles.nearbyRow, pressed && styles.pressed]}
+                onPress={() => onSelectPoint?.({ lat: item.edge_lat, lng: item.edge_lng })}
+                accessibilityRole="button"
+                accessibilityLabel={`${rocks}, ${name}, ${where}`}
+              >
+                <LithologySwatch kind={lithologyFor(item.rock_types)} />
+                <View style={styles.nearbyText}>
+                  <Text style={styles.nearbyRocks} numberOfLines={1}>
+                    {rocks}
+                  </Text>
+                  <Text style={styles.nearbyName} numberOfLines={1}>
+                    {name}
+                  </Text>
+                </View>
+                <View style={styles.nearbyWhere}>
+                  <Text style={styles.nearbyDistance}>{where}</Text>
+                  <BearingIcon bearing={item.bearing_deg} />
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
       )}
 
-      {/* 4. Example photos */}
+      {/* 4. Example photos, captioned like book figures */}
       {images && images.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
-          {images.map((image) => (
-            <View key={image.id} style={styles.imageCard}>
+          {images.map((image, i) => (
+            <View key={image.id} style={styles.figure}>
               <Image
                 source={{ uri: image.url }}
                 style={styles.image}
                 contentFit="cover"
                 transition={150}
-                accessibilityLabel={image.caption ?? `Example photo of ${formation.name}`}
+                accessibilityLabel={image.caption ?? `Example photo of ${title}`}
               />
-              {(image.caption || image.credit) && (
-                <Text style={styles.credit} numberOfLines={2}>
-                  {[image.caption, image.credit && `Photo: ${image.credit}`].filter(Boolean).join(' · ')}
-                </Text>
-              )}
+              <Text style={styles.caption} numberOfLines={4}>
+                <Text style={styles.figLabel}>FIG. {i + 1} </Text>
+                {image.caption}
+                {image.credit ? <Text style={styles.credit}>{` Photo: ${image.credit}.`}</Text> : null}
+              </Text>
             </View>
           ))}
         </ScrollView>
@@ -180,8 +217,8 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
         accessibilityRole="button"
         accessibilityState={{ expanded }}
       >
-        <Text style={styles.expanderText}>Geologist's view</Text>
-        <Text style={styles.expanderIcon}>{expanded ? '▴' : '▾'}</Text>
+        <Text style={styles.expanderText}>Geologist&apos;s view</Text>
+        <ChevronIcon up={expanded} />
       </Pressable>
 
       {expanded && (
@@ -190,6 +227,7 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
           {formation.geologic_age && (
             <GlossaryText style={styles.meta}>{`Rock class: ${formation.geologic_age}`}</GlossaryText>
           )}
+          {formation.name !== title && <Text style={styles.meta}>Map name: {formation.name}</Text>}
 
           {formation.rock_types && formation.rock_types.length > 0 && (
             <View style={styles.chips}>
@@ -209,7 +247,7 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
 
           {macrostrat.isLoading && (
             <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" />
+              <ActivityIndicator size="small" color={colors.accent} />
               <Text style={styles.meta}>Loading age and description…</Text>
             </View>
           )}
@@ -218,13 +256,13 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
               {macrostrat.error ? 'Age and description unavailable offline.' : 'No detailed description for this spot.'}
             </Text>
           )}
-
-          {unit && (
-            <Text style={styles.attribution}>
-              {unitDiffers ? `Details for Macrostrat unit "${unit.name}". ` : ''}Unit data: Macrostrat (CC BY 4.0).
-            </Text>
-          )}
         </View>
+      )}
+
+      {unit && (
+        <Text style={styles.attribution}>
+          {unitDiffers ? `Details for Macrostrat unit "${unit.name}". ` : ''}Unit data: Macrostrat (CC BY 4.0).
+        </Text>
       )}
     </View>
   );
@@ -232,153 +270,205 @@ export default function FormationDetails({ formation, point, onSelectPoint }: Fo
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
+    gap: 18,
   },
   notice: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#b5651d',
-    backgroundColor: '#fbf1e6',
-    borderRadius: 8,
-    padding: 10,
+    flexDirection: 'row',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.noticeBorder,
+    borderRadius: 10,
+    backgroundColor: colors.noticeBg,
+    padding: 12,
+  },
+  noticeIcon: {
+    paddingTop: 2,
+  },
+  noticeText: {
+    flex: 1,
     gap: 4,
   },
   noticeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#5a3410',
+    fontFamily: fonts.labelBold,
+    fontSize: 13,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.noticeInk,
   },
   noticeBody: {
+    fontFamily: fonts.serif,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.noticeInk,
+  },
+  header: {
+    gap: 4,
+  },
+  parent: {
+    fontFamily: fonts.label,
     fontSize: 13,
-    lineHeight: 18,
-    color: '#5a3410',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: colors.muted,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 10,
   },
   title: {
     flexShrink: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 28,
+    lineHeight: 33,
+    color: colors.ink,
   },
-  badge: {
+  unitTag: {
+    borderWidth: 1,
+    borderColor: colors.ink,
+    borderRadius: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#efe6d8',
+    paddingVertical: 1,
   },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b4f2a',
+  unitTagText: {
+    fontFamily: fonts.labelBold,
+    fontSize: 15,
+    color: colors.ink,
   },
   sourceButton: {
     alignSelf: 'flex-start',
-    minHeight: 44,
+    minHeight: 40,
     justifyContent: 'center',
-    marginTop: -6,
   },
   sourceText: {
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#6b4f2a',
+    color: colors.accent,
   },
   section: {
-    gap: 8,
+    gap: 10,
+  },
+  sectionTight: {
+    gap: 0,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8a857a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...labelStyle,
+  },
+  sectionRule: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.ink,
   },
   lead: {
-    fontSize: 17,
-    lineHeight: 25,
-    color: '#1d1b16',
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    lineHeight: 28,
+    color: colors.ink,
   },
   aiLabel: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: '#8a857a',
+    fontFamily: fonts.serifItalic,
+    fontSize: 13,
+    color: colors.muted,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 21,
-    color: '#3a372f',
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.inkSoft,
   },
   nearbyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    minHeight: 48,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e6e1d8',
+    minHeight: 58,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.rule,
+  },
+  pressed: {
+    backgroundColor: colors.paper,
   },
   nearbyText: {
     flex: 1,
   },
   nearbyRocks: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1d1b16',
-    textTransform: 'capitalize',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 16,
+    color: colors.ink,
   },
   nearbyName: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#6b665c',
+    color: colors.muted,
+  },
+  nearbyWhere: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   nearbyDistance: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b4f2a',
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 15,
+    color: colors.accent,
     fontVariant: ['tabular-nums'],
   },
   images: {
-    gap: 10,
-    paddingVertical: 4,
+    gap: 14,
   },
-  imageCard: {
-    width: 220,
-    gap: 4,
+  figure: {
+    width: 300,
+    gap: 8,
   },
   image: {
-    width: 220,
-    height: 150,
-    borderRadius: 10,
-    backgroundColor: '#e3dfd7',
+    width: 300,
+    height: 200,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    backgroundColor: colors.rule,
+  },
+  caption: {
+    fontFamily: fonts.serif,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.inkSoft,
+  },
+  figLabel: {
+    fontFamily: fonts.labelBold,
+    letterSpacing: 1,
+    color: colors.ink,
   },
   credit: {
-    fontSize: 12,
-    color: '#6b665c',
+    fontFamily: fonts.serifItalic,
   },
   expander: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 48,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e6e1d8',
+    minHeight: 52,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.ink,
   },
   expanderText: {
+    ...labelStyle,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#6b4f2a',
-  },
-  expanderIcon: {
-    fontSize: 16,
-    color: '#6b4f2a',
   },
   age: {
-    fontSize: 15,
-    color: '#4a463e',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 16,
+    color: colors.ink,
   },
   meta: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#8a857a',
+    color: colors.muted,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -386,8 +476,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   attribution: {
-    fontSize: 11,
-    color: '#8a857a',
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: colors.muted,
   },
   chips: {
     flexDirection: 'row',
@@ -397,11 +488,14 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#f2f0ec',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    backgroundColor: colors.paper,
   },
   chipText: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#3a372f',
+    color: colors.inkSoft,
   },
 });

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ConfidenceMeter from '../components/ConfidenceMeter';
 import { useCatalog, useDeleteEntry, useUpdateNotes, type CatalogEntry } from '../hooks/useCatalog';
 import type { RootStackScreenProps } from '../navigation/types';
+import { colors, fonts, labelStyle } from '../theme';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 
@@ -205,7 +206,7 @@ function CatalogDetails({ entry }: { entry: CatalogEntry }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f6f4f0',
+    backgroundColor: colors.paper,
   },
   centered: {
     alignItems: 'center',
@@ -217,8 +218,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   summary: {
@@ -230,63 +233,65 @@ const styles = StyleSheet.create({
   thumb: {
     width: 64,
     height: 64,
-    borderRadius: 10,
-    backgroundColor: '#e3dfd7',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    backgroundColor: colors.rule,
   },
   thumbPlaceholder: {
-    borderWidth: 1,
-    borderColor: '#d6d0c4',
+    borderColor: colors.rule,
   },
   summaryText: {
     flex: 1,
     gap: 2,
   },
   rockType: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 18,
+    color: colors.ink,
     textTransform: 'capitalize',
   },
   formation: {
+    fontFamily: fonts.sans,
     fontSize: 14,
-    color: '#4a463e',
+    color: colors.inkSoft,
   },
   meta: {
+    fontFamily: fonts.sans,
     fontSize: 12,
-    color: '#8a857a',
+    color: colors.muted,
   },
   chevron: {
     fontSize: 16,
-    color: '#8a857a',
+    color: colors.muted,
   },
   details: {
     paddingHorizontal: 12,
     paddingBottom: 12,
     gap: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e6e1d8',
+    borderTopWidth: 1,
+    borderTopColor: colors.rule,
     paddingTop: 12,
   },
   detailLine: {
-    fontSize: 14,
-    color: '#4a463e',
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    color: colors.inkSoft,
   },
   notesLabel: {
+    ...labelStyle,
     fontSize: 13,
-    fontWeight: '700',
-    color: '#8a857a',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   notesInput: {
     minHeight: 88,
     borderWidth: 1,
-    borderColor: '#ddd8ce',
-    borderRadius: 10,
+    borderColor: colors.ink,
+    borderRadius: 8,
     padding: 10,
+    fontFamily: fonts.serif,
     fontSize: 15,
-    color: '#1d1b16',
-    backgroundColor: '#fbfaf8',
+    color: colors.ink,
+    backgroundColor: colors.paper,
   },
   detailActions: {
     flexDirection: 'row',
@@ -294,46 +299,50 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   deleteText: {
-    color: '#d4453a',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
+    color: colors.danger,
   },
   saveNoteButton: {
     minWidth: 110,
-    height: 40,
+    height: 44,
     paddingHorizontal: 16,
     borderRadius: 10,
-    backgroundColor: '#6b4f2a',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButton: {
     marginTop: 8,
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    minHeight: 48,
+    justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: '#6b4f2a',
+    backgroundColor: colors.accent,
   },
   primaryButtonText: {
-    color: '#fff',
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
-    fontWeight: '600',
+    color: '#fff',
   },
   disabled: {
     opacity: 0.45,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1d1b16',
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 20,
+    color: colors.ink,
   },
   emptyBody: {
-    fontSize: 15,
-    color: '#6b665c',
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.inkSoft,
     textAlign: 'center',
   },
   error: {
+    fontFamily: fonts.sans,
     fontSize: 13,
-    color: '#d4453a',
+    color: colors.danger,
   },
 });
