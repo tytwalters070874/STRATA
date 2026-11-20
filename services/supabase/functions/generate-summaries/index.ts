@@ -201,22 +201,14 @@ async function selfReference(
   return data?.refers_to_sources ? String(data.quote || "unquoted") : null;
 }
 
-/** Checks stored summaries without changing them; returns the ones that fail. */
-async function audit(
-  supabase: ReturnType<typeof createClient>,
-  client: Anthropic,
-  model: string,
-  offset: number,
-  limit: number,
-) {
-  const { data, error } = await supabase
-    .from("formation_summaries")
-    .select("formation_name, summary, how_it_formed")
-    .order("formation_name")
-    .range(offset, offset + limit - 1);
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as { formation_name: string; summary: string; how_it_formed: string | null }[];
+interface StoredSummary {
+  formation_name: string;
+  summary: string;
+  how_it_formed: string | null;
+}
 
+/** Checks stored summaries without changing them; returns the ones that fail. */
+async function audit(rows: StoredSummary[], client: Anthropic, model: string, offset: number, limit: number) {
   const flagged: { name: string; quote: string }[] = [];
   const failed: { name: string; error: string }[] = [];
   for (let i = 0; i < rows.length; i += CONCURRENCY) {
@@ -261,7 +253,13 @@ Deno.serve(async (request) => {
     const offset = Number.isInteger(body.offset) ? Math.max(0, body.offset as number) : 0;
     const limit = Number.isInteger(body.limit) ? Math.min(MAX_AUDIT, Math.max(1, body.limit as number)) : MAX_AUDIT;
     try {
-      return json(await audit(supabase, anthropic, model, offset, limit));
+      const { data, error: readError } = await supabase
+        .from("formation_summaries")
+        .select("formation_name, summary, how_it_formed")
+        .order("formation_name")
+        .range(offset, offset + limit - 1);
+      if (readError) throw new Error(readError.message);
+      return json(await audit((data ?? []) as StoredSummary[], anthropic, model, offset, limit));
     } catch (e) {
       return json({ error: e instanceof Error ? e.message : String(e) }, 500);
     }
