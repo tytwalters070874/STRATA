@@ -106,7 +106,9 @@ export default function LandingScreen() {
           )}
         </View>
 
-        <View style={styles.actions}>
+        {/* Pinned to the bottom on the first screen; while signing in the
+            form follows the headline, so no blank page opens up above it. */}
+        <View style={[styles.actions, stage !== 'start' && styles.actionsInline]}>
           {stage === 'start' && (
             <>
               <Pressable
@@ -273,6 +275,9 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 'auto',
     gap: 12,
+  },
+  actionsInline: {
+    marginTop: 8,
   },
   primaryButton: {
     height: 52,
